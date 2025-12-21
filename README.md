@@ -342,6 +342,289 @@ The admin dashboard provides:
 }
 ```
 
+## ?? Testing
+
+### Running Tests
+
+The solution includes a comprehensive unit test suite with **xUnit**, **Moq**, and **FluentAssertions**.
+
+**Using Visual Studio:**
+1. Open **Test Explorer** (Test → Test Explorer)
+2. Click **Run All Tests** to execute all tests
+3. View test results and coverage in the Test Explorer window
+
+**Using .NET CLI:**
+```bash
+# Run all tests
+dotnet test
+
+# Run tests with detailed output
+dotnet test --logger "console;verbosity=detailed"
+
+# Run tests for a specific project
+dotnet test NotificationService.Tests/NotificationService.Tests.csproj
+```
+
+### Code Coverage
+
+Generate code coverage reports using Coverlet:
+
+```bash
+# Generate coverage report
+dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura
+
+# Generate coverage with HTML report (requires ReportGenerator)
+dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura
+dotnet tool install -g dotnet-reportgenerator-globaltool
+reportgenerator -reports:"**/coverage.cobertura.xml" -targetdir:"coveragereport" -reporttypes:Html
+```
+
+The test suite covers:
+- **Application Layer**: Services, validators, and business logic
+- **API Layer**: Controllers, HTTP status codes, and response models
+- **Domain Layer**: Entity validation and domain logic
+
+### Package Manager Commands
+
+Common commands for managing the solution:
+
+```bash
+# Restore all NuGet packages
+dotnet restore NotificationService.sln
+
+# Build the entire solution
+dotnet build NotificationService.sln
+
+# Run the API project
+dotnet run --project NotificationService.Api
+
+# Apply database migrations
+dotnet ef database update --project NotificationService.Infrastructure --startup-project NotificationService.Api
+
+# Create a new migration
+dotnet ef migrations add <MigrationName> --project NotificationService.Infrastructure --startup-project NotificationService.Api
+
+# Clean build artifacts
+dotnet clean NotificationService.sln
+```
+
+## ?? API Examples
+
+### Sending an Email Notification
+
+**Request:**
+```bash
+POST /api/notifications
+X-Subscription-Key: sk_live_acme_a1b2c3d4e5f6g7h8i9j0
+Content-Type: application/json
+
+{
+  "type": "Email",
+  "recipient": "user@example.com",
+  "subject": "Welcome to Our Service",
+  "body": "<h1>Welcome!</h1><p>Thank you for joining our platform.</p>",
+  "priority": "Normal",
+  "correlationId": "order-12345"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "notificationId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "status": "Processing",
+  "message": "Notification created successfully",
+  "createdAt": "2024-01-15T10:30:00Z"
+}
+```
+
+### Sending an SMS Notification
+
+**Request:**
+```bash
+POST /api/notifications
+X-Subscription-Key: sk_live_acme_a1b2c3d4e5f6g7h8i9j0
+Content-Type: application/json
+
+{
+  "type": "Sms",
+  "recipient": "+12025551234",
+  "subject": "Verification Code",
+  "body": "Your verification code is: 123456",
+  "priority": "High"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "notificationId": "7ba85f64-5717-4562-b3fc-2c963f66afa9",
+  "status": "Processing",
+  "message": "Notification created successfully",
+  "createdAt": "2024-01-15T10:31:00Z"
+}
+```
+
+### Sending Batch Notifications
+
+**Request:**
+```bash
+POST /api/notifications/batch
+X-Subscription-Key: sk_live_acme_a1b2c3d4e5f6g7h8i9j0
+Content-Type: application/json
+
+{
+  "notifications": [
+    {
+      "type": "Email",
+      "recipient": "user1@example.com",
+      "subject": "Newsletter",
+      "body": "Monthly newsletter content...",
+      "priority": "Low"
+    },
+    {
+      "type": "Email",
+      "recipient": "user2@example.com",
+      "subject": "Newsletter",
+      "body": "Monthly newsletter content...",
+      "priority": "Low"
+    }
+  ]
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "totalCount": 2,
+  "acceptedCount": 2,
+  "rejectedCount": 0,
+  "results": [
+    {
+      "index": 0,
+      "notificationId": "8ca85f64-5717-4562-b3fc-2c963f66afa1",
+      "accepted": true,
+      "errorMessage": null
+    },
+    {
+      "index": 1,
+      "notificationId": "9da85f64-5717-4562-b3fc-2c963f66afa2",
+      "accepted": true,
+      "errorMessage": null
+    }
+  ]
+}
+```
+
+### Admin Login
+
+**Request:**
+```bash
+POST /api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@notificationservice.com",
+  "password": "Admin@123"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "tokenType": "Bearer",
+  "expiresIn": 3600,
+  "user": {
+    "id": "1fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "name": "Admin User",
+    "email": "admin@notificationservice.com",
+    "role": "SuperAdmin",
+    "isActive": true,
+    "createdAt": "2024-01-01T00:00:00Z",
+    "lastLoginAt": "2024-01-15T10:35:00Z"
+  }
+}
+```
+
+### Creating a New User (Admin)
+
+**Request:**
+```bash
+POST /api/admin/users
+Authorization: Bearer <your-jwt-token>
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "password": "SecurePassword123!",
+  "role": "User"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": "2fa85f64-5717-4562-b3fc-2c963f66afa7",
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "role": "User",
+  "isActive": true,
+  "createdAt": "2024-01-15T10:40:00Z",
+  "lastLoginAt": null
+}
+```
+
+### Getting Notification Details
+
+**Request:**
+```bash
+GET /api/notifications/3fa85f64-5717-4562-b3fc-2c963f66afa6
+X-Subscription-Key: sk_live_acme_a1b2c3d4e5f6g7h8i9j0
+```
+
+**Response (200 OK):**
+```json
+{
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "type": "Email",
+  "status": "Delivered",
+  "priority": "Normal",
+  "recipient": "user@example.com",
+  "subject": "Welcome to Our Service",
+  "body": "<h1>Welcome!</h1><p>Thank you for joining our platform.</p>",
+  "metadata": null,
+  "retryCount": 0,
+  "maxRetries": 3,
+  "createdAt": "2024-01-15T10:30:00Z",
+  "scheduledAt": null,
+  "sentAt": "2024-01-15T10:30:05Z",
+  "deliveredAt": "2024-01-15T10:30:10Z",
+  "errorMessage": null,
+  "externalId": "ext-123456",
+  "correlationId": "order-12345",
+  "userId": "1fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "subscriptionId": "5fa85f64-5717-4562-b3fc-2c963f66afa8",
+  "logs": [
+    {
+      "id": "4fa85f64-5717-4562-b3fc-2c963f66afa0",
+      "status": "Processing",
+      "message": "Notification created and queued for processing",
+      "details": null,
+      "createdAt": "2024-01-15T10:30:00Z"
+    },
+    {
+      "id": "5fa85f64-5717-4562-b3fc-2c963f66afa1",
+      "status": "Delivered",
+      "message": "Notification delivered successfully",
+      "details": null,
+      "createdAt": "2024-01-15T10:30:10Z"
+    }
+  ]
+}
+```
+
 ## ?? Production Considerations
 
 Before deploying to production:
