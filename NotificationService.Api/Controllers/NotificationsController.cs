@@ -196,7 +196,7 @@ public class NotificationsController : ControllerBase
     [SwaggerOperation(
         Summary = "Get Quota Status",
         Description = "Get remaining daily and monthly notification quota for current subscription")]
-    [SwaggerResponse(200, "Quota status")]
+    [ProducesResponseType(typeof(object), 200)]
     public IActionResult GetQuotaStatus()
     {
         return Ok(new

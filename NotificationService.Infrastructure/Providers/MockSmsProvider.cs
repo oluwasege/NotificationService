@@ -8,9 +8,9 @@ public class MockSmsProvider : INotificationProvider
 {
     private readonly ILogger<MockSmsProvider> _logger;
     private static readonly Random _random = new();
-
+    private readonly bool _isAvailable = true;
     public string ProviderName => "MockSmsProvider";
-
+    public bool IsAvailable => _isAvailable;
     public MockSmsProvider(ILogger<MockSmsProvider> logger)
     {
         _logger = logger;
@@ -69,5 +69,11 @@ public class MockSmsProvider : INotificationProvider
             Message: "SMS delivered",
             ProviderResponse: $"{{\"status\":\"delivered\",\"deliveredAt\":\"{DateTime.UtcNow:O}\"}}"
         );
+    }
+
+    public Task<bool> HealthCheckAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogDebug("MockSms: Health check - Available: {IsAvailable}", _isAvailable);
+        return Task.FromResult(_isAvailable);
     }
 }

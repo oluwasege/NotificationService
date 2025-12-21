@@ -1,9 +1,15 @@
+using System.ComponentModel;
+
 namespace NotificationService.Domain.Enums;
 
 public enum SubscriptionStatus
 {
+    [Description("Active")]
     Active = 1,
-    Suspended = 2,
-    Expired = 3,
-    Revoked = 4
+    [Description("Suspended")]
+    Suspended,
+    [Description("Expired")]
+    Expired,
+    [Description("Revoked")]
+    Revoked
 }

@@ -21,7 +21,7 @@ public class DatabaseSeeder
     {
         _logger.LogInformation("Starting database seeding...");
 
-        await _context.Database.MigrateAsync();
+        await _context.Database.EnsureCreatedAsync();
 
         if (await _context.Users.AnyAsync())
         {
@@ -233,9 +233,8 @@ public class DatabaseSeeder
     private static string BCryptHash(string password)
     {
         // Simple hash for demo - in production use proper BCrypt
-        using var sha256 = System.Security.Cryptography.SHA256.Create();
         var bytes = System.Text.Encoding.UTF8.GetBytes(password + "NotificationServiceSalt2024");
-        var hash = sha256.ComputeHash(bytes);
+        var hash = System.Security.Cryptography.SHA256.HashData(bytes);
         return Convert.ToBase64String(hash);
     }
 }

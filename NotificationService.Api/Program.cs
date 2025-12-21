@@ -73,14 +73,13 @@ try
     });
 
     // Configure Authorization Policies
-    builder.Services.AddAuthorization(options =>
-    {
-        options.AddPolicy("AdminOnly", policy =>
-            policy.RequireRole("Admin", "SuperAdmin"));
-
-        options.AddPolicy("SuperAdminOnly", policy =>
+    builder.Services.AddAuthorizationBuilder()
+                                               // Configure Authorization Policies
+                                               .AddPolicy("AdminOnly", policy =>
+            policy.RequireRole("Admin", "SuperAdmin"))
+                                               // Configure Authorization Policies
+                                               .AddPolicy("SuperAdminOnly", policy =>
             policy.RequireRole("SuperAdmin"));
-    });
 
     // Configure Swagger/OpenAPI
     builder.Services.AddEndpointsApiExplorer();
@@ -94,8 +93,8 @@ try
                           "Use subscription keys for API access and JWT for admin operations.",
             Contact = new OpenApiContact
             {
-                Name = "API Support",
-                Email = "support@notificationservice.com"
+                Name = "Oluwasegun Akinpelu",
+                Email = "akinpelu53@gmail.com"
             }
         });
 
@@ -201,5 +200,5 @@ catch (Exception ex)
 }
 finally
 {
-    Log.CloseAndFlush();
+    await Log.CloseAndFlushAsync();
 }

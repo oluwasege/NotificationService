@@ -14,18 +14,15 @@ namespace NotificationService.Application.Services;
 
 public class AuthService : IAuthService
 {
-    private readonly IRepository<User> _userRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IConfiguration _configuration;
     private readonly ILogger<AuthService> _logger;
 
     public AuthService(
-        IRepository<User> userRepository,
         IUnitOfWork unitOfWork,
         IConfiguration configuration,
         ILogger<AuthService> logger)
     {
-        _userRepository = userRepository;
         _unitOfWork = unitOfWork;
         _configuration = configuration;
         _logger = logger;
@@ -35,7 +32,7 @@ public class AuthService : IAuthService
     {
         _logger.LogInformation("Login attempt for email: {Email}", request.Email);
 
-        var user = await _userRepository.FirstOrDefaultAsync(
+        var user = await _unitOfWork.GetRepository<User>().FirstOrDefaultAsync(
             u => u.Email.ToLower() == request.Email.ToLower(),
             cancellationToken);
 
@@ -58,7 +55,7 @@ public class AuthService : IAuthService
         }
 
         user.LastLoginAt = DateTime.UtcNow;
-        await _userRepository.UpdateAsync(user, cancellationToken);
+        await _unitOfWork.GetRepository<User>().UpdateAsync(user, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         var token = GenerateJwtToken(user);
@@ -84,7 +81,7 @@ public class AuthService : IAuthService
 
     public async Task<UserDto?> GetCurrentUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+        var user = await _unitOfWork.GetRepository<User>().GetByIdAsync(userId, cancellationToken);
         if (user == null) return null;
 
         return new UserDto(
@@ -100,9 +97,8 @@ public class AuthService : IAuthService
 
     public string HashPassword(string password)
     {
-        using var sha256 = SHA256.Create();
         var bytes = Encoding.UTF8.GetBytes(password + GetSalt());
-        var hash = sha256.ComputeHash(bytes);
+        var hash = SHA256.HashData(bytes);
         return Convert.ToBase64String(hash);
     }
 

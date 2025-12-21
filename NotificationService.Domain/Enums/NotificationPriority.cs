@@ -1,9 +1,15 @@
+using System.ComponentModel;
+
 namespace NotificationService.Domain.Enums;
 
 public enum NotificationPriority
 {
+    [Description("Low Priority")]
     Low = 1,
-    Normal = 2,
-    High = 3,
-    Critical = 4
+    [Description("Normal Priority")]
+    Normal,
+    [Description("High Priority")]
+    High,
+    [Description("Critical Priority")]
+    Critical
 }

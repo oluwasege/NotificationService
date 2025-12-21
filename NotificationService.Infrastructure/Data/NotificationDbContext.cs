@@ -1,5 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using NotificationService.Domain.Entities;
+using NotificationService.Domain.Exceptions;
+using NotificationService.Infrastructure.Extensions;
 
 namespace NotificationService.Infrastructure.Data;
 
@@ -77,23 +80,96 @@ public class NotificationDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
             entity.HasQueryFilter(e => !e.IsDeleted);
         });
+
+        // Get all entity types
+        var entityTypes = modelBuilder.Model.GetEntityTypes();
+
+        foreach (var entityType in entityTypes)
+        {
+
+            // Check if the entity type is a generic base entity
+            if (entityType.ClrType.IsGenericType && entityType.ClrType.GetGenericTypeDefinition() == typeof(BaseEntity<>))
+            {
+                // Get the type of T (Id type)
+                var idType = entityType.ClrType.GetGenericArguments()[0];
+
+                // Configure primary key as non-clustered
+                modelBuilder.Entity(entityType.ClrType)
+                    .HasKey("Id");
+
+                // Configure Id property based on its type
+                if (idType == typeof(int) || idType == typeof(long))
+                {
+                    modelBuilder.Entity(entityType.ClrType)
+                        .Property("Id")
+                        .UseIdentityColumn();
+                }
+                else if (idType == typeof(Guid))
+                {
+                    modelBuilder.Entity(entityType.ClrType)
+                        .Property("Id")
+                        .HasDefaultValueSql("NEWSEQUENTIALID()");
+                }
+
+                // Configure clustered index on DateCreated
+                modelBuilder.Entity(entityType.ClrType)
+                    .HasIndex("DateCreated")
+                    .HasDatabaseName($"CIX_{entityType.GetTableName()}_DateCreated")
+                    .IsClustered();
+
+                // Configure DateCreated property
+                modelBuilder.Entity(entityType.ClrType)
+                    .Property("DateCreated")
+                    .HasDefaultValueSql("SYSDATETIMEOFFSET()")
+                    .ValueGeneratedOnAdd();
+            }
+            modelBuilder.AddSoftDeleteQueryFilter(entityType);
+        }
     }
 
-    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        var entries = ChangeTracker.Entries<BaseEntity>();
-        foreach (var entry in entries)
+
+        try
         {
-            switch (entry.State)
+            CrudStatuses();
+            var result = await base.SaveChangesAsync(cancellationToken);
+            return result;
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            throw new AppDbConcurrencyException(ex.Message, ex);
+        }
+    }
+
+    private void CrudStatuses()
+    {
+        var time = DateTime.Now;
+        foreach (var entry in ChangeTracker.Entries())
+        {
+            if (entry.Entity is BaseEntity<object> baseEntity)
             {
-                case EntityState.Added:
-                    entry.Entity.CreatedAt = DateTime.UtcNow;
-                    break;
-                case EntityState.Modified:
-                    entry.Entity.UpdatedAt = DateTime.UtcNow;
-                    break;
+                switch (entry.State)
+                {
+                    case EntityState.Added:
+                        baseEntity.IsDeleted = false;
+                        baseEntity.CreatedAt = time;
+                        break;
+                    case EntityState.Deleted:
+                        entry.State = EntityState.Modified;
+                        baseEntity.IsDeleted = true;
+                        baseEntity.UpdatedAt = time;
+                        break;
+                    case EntityState.Modified:
+                        baseEntity.UpdatedAt = time;
+                        break;
+                }
             }
         }
-        return base.SaveChangesAsync(cancellationToken);
+    }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        optionsBuilder.ConfigureWarnings(x => x.Ignore(SqlServerEventId.SavepointsDisabledBecauseOfMARS));
     }
 }

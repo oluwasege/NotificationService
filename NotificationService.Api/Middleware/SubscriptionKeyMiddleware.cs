@@ -9,6 +9,10 @@ public class SubscriptionKeyMiddleware
     private readonly RequestDelegate _next;
     private readonly ILogger<SubscriptionKeyMiddleware> _logger;
     private const string SubscriptionKeyHeader = "X-Subscription-Key";
+    private static readonly JsonSerializerOptions CachedJsonSerializerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
 
     public SubscriptionKeyMiddleware(RequestDelegate next, ILogger<SubscriptionKeyMiddleware> logger)
     {
@@ -74,10 +78,7 @@ public class SubscriptionKeyMiddleware
             }
         };
 
-        await context.Response.WriteAsync(JsonSerializer.Serialize(response, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        }));
+        await context.Response.WriteAsync(JsonSerializer.Serialize(response, CachedJsonSerializerOptions));
     }
 }
 

@@ -1,11 +1,19 @@
+using System.ComponentModel;
+
 namespace NotificationService.Domain.Enums;
 
 public enum NotificationStatus
 {
+    [Description("Pending")]
     Pending = 1,
-    Processing = 2,
-    Sent = 3,
-    Delivered = 4,
-    Failed = 5,
-    Retrying = 6
+    [Description("Processing")]
+    Processing,
+    [Description("Sent")]
+    Sent,
+    [Description("Delivered")]
+    Delivered,
+    [Description("Failed")]
+    Failed,
+    [Description("Retrying")]
+    Retrying
 }

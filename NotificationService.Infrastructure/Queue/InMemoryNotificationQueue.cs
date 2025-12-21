@@ -1,6 +1,8 @@
-using System.Threading.Channels;
+using Microsoft.Extensions.Logging;
 using NotificationService.Domain.Entities;
+using NotificationService.Domain.Enums;
 using NotificationService.Domain.Interfaces;
+using System.Threading.Channels;
 
 namespace NotificationService.Infrastructure.Queue;
 
@@ -9,9 +11,11 @@ public class InMemoryNotificationQueue : INotificationQueue
     private readonly Channel<Notification> _highPriorityChannel;
     private readonly Channel<Notification> _normalPriorityChannel;
     private readonly Channel<Notification> _lowPriorityChannel;
+    private readonly ILogger<InMemoryNotificationQueue> _logger;
 
-    public InMemoryNotificationQueue()
+    public InMemoryNotificationQueue(ILogger<InMemoryNotificationQueue> logger)
     {
+        _logger = logger;
         var options = new BoundedChannelOptions(10000)
         {
             FullMode = BoundedChannelFullMode.Wait,
@@ -28,15 +32,20 @@ public class InMemoryNotificationQueue : INotificationQueue
     {
         var channel = notification.Priority switch
         {
-            Domain.Enums.NotificationPriority.Critical or Domain.Enums.NotificationPriority.High => _highPriorityChannel,
-            Domain.Enums.NotificationPriority.Normal => _normalPriorityChannel,
+            NotificationPriority.Critical or NotificationPriority.High => _highPriorityChannel,
+            NotificationPriority.Normal => _normalPriorityChannel,
             _ => _lowPriorityChannel
         };
 
         await channel.Writer.WriteAsync(notification, cancellationToken);
+
+        _logger.LogDebug(
+            "Notification {Id} enqueued with priority {Priority}",
+            notification.Id,
+            notification.Priority);
     }
 
-    public async ValueTask<Notification?> DequeueAsync(CancellationToken cancellationToken = default)
+    public async ValueTask<Notification> DequeueAsync(CancellationToken cancellationToken = default)
     {
         // Priority-based dequeue: high -> normal -> low
         if (_highPriorityChannel.Reader.TryRead(out var highPriorityNotification))
@@ -56,7 +65,7 @@ public class InMemoryNotificationQueue : INotificationQueue
 
         // Wait for any notification
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        
+
         var highTask = _highPriorityChannel.Reader.WaitToReadAsync(cts.Token).AsTask();
         var normalTask = _normalPriorityChannel.Reader.WaitToReadAsync(cts.Token).AsTask();
         var lowTask = _lowPriorityChannel.Reader.WaitToReadAsync(cts.Token).AsTask();
@@ -86,5 +95,21 @@ public class InMemoryNotificationQueue : INotificationQueue
         return _highPriorityChannel.Reader.Count +
                _normalPriorityChannel.Reader.Count +
                _lowPriorityChannel.Reader.Count;
+    }
+
+    private Channel<Notification> GetQueueForPriority(NotificationPriority priority)
+    {
+        return priority switch
+        {
+            NotificationPriority.Critical or NotificationPriority.High => _highPriorityChannel,
+            NotificationPriority.Normal => _normalPriorityChannel,
+            _ => _lowPriorityChannel
+        };
+    }
+
+    public int GetQueueDepth(NotificationPriority priority)
+    {
+        var queue = GetQueueForPriority(priority);
+        return queue.Reader.Count;
     }
 }

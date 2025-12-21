@@ -10,16 +10,13 @@ namespace NotificationService.Application.Services;
 
 public class SubscriptionValidationService : ISubscriptionValidationService
 {
-    private readonly IRepository<Subscription> _subscriptionRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<SubscriptionValidationService> _logger;
 
     public SubscriptionValidationService(
-        IRepository<Subscription> subscriptionRepository,
         IUnitOfWork unitOfWork,
         ILogger<SubscriptionValidationService> logger)
     {
-        _subscriptionRepository = subscriptionRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -34,7 +31,7 @@ public class SubscriptionValidationService : ISubscriptionValidationService
             return new SubscriptionKeyValidationResult(false, null, null, "Subscription key is required", null, null, null, null);
         }
 
-        var subscription = await _subscriptionRepository
+        var subscription = await _unitOfWork.GetRepository<Subscription>()      
             .QueryNoTracking()
             .Include(s => s.User)
             .FirstOrDefaultAsync(s => s.SubscriptionKey == subscriptionKey, cancellationToken);
@@ -100,7 +97,7 @@ public class SubscriptionValidationService : ISubscriptionValidationService
         NotificationType type,
         CancellationToken cancellationToken = default)
     {
-        var subscription = await _subscriptionRepository.GetByIdAsync(subscriptionId, cancellationToken);
+        var subscription = await _unitOfWork.GetRepository<Subscription>().GetByIdAsync(subscriptionId, cancellationToken);
         if (subscription == null) return false;
 
         return type switch
@@ -115,7 +112,7 @@ public class SubscriptionValidationService : ISubscriptionValidationService
         Guid subscriptionId,
         CancellationToken cancellationToken = default)
     {
-        var subscription = await _subscriptionRepository.GetByIdAsync(subscriptionId, cancellationToken);
+        var subscription = await _unitOfWork.GetRepository<Subscription>().GetByIdAsync(subscriptionId, cancellationToken);
         if (subscription == null) return;
 
         await ResetCountersIfNeededAsync(subscription, cancellationToken);
@@ -123,7 +120,7 @@ public class SubscriptionValidationService : ISubscriptionValidationService
         subscription.DailyUsed++;
         subscription.MonthlyUsed++;
 
-        await _subscriptionRepository.UpdateAsync(subscription, cancellationToken);
+        await _unitOfWork.GetRepository<Subscription>().UpdateAsync(subscription, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogDebug(
@@ -134,7 +131,7 @@ public class SubscriptionValidationService : ISubscriptionValidationService
     private async Task ResetCountersIfNeededAsync(Subscription subscription, CancellationToken cancellationToken)
     {
         var today = DateTime.UtcNow.Date;
-        var firstOfMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        var firstOfMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         var needsUpdate = false;
 
         if (subscription.LastResetDaily.Date < today)
@@ -155,7 +152,7 @@ public class SubscriptionValidationService : ISubscriptionValidationService
 
         if (needsUpdate)
         {
-            await _subscriptionRepository.UpdateAsync(subscription, cancellationToken);
+            await _unitOfWork.GetRepository<Subscription>().UpdateAsync(subscription, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
     }

@@ -161,8 +161,8 @@ public class NotificationProcessorService : BackgroundService
     private async Task HandleFailureAsync(
         NotificationDbContext context,
         Notification notification,
-        string? errorMessage,
-        string? providerResponse,
+        string errorMessage,
+        string providerResponse,
         CancellationToken cancellationToken)
     {
         notification.RetryCount++;
@@ -239,7 +239,7 @@ public class NotificationProcessorService : BackgroundService
         NotificationStatus status,
         string message,
         CancellationToken cancellationToken,
-        string? providerResponse = null)
+        string providerResponse = null)
     {
         var log = new NotificationLog
         {

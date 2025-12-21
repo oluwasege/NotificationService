@@ -10,23 +10,17 @@ namespace NotificationService.Application.Services;
 
 public class NotificationAppService : INotificationService
 {
-    private readonly IRepository<Notification> _notificationRepository;
-    private readonly IRepository<NotificationLog> _logRepository;
     private readonly INotificationQueue _notificationQueue;
     private readonly ISubscriptionValidationService _subscriptionValidation;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<NotificationAppService> _logger;
 
     public NotificationAppService(
-        IRepository<Notification> notificationRepository,
-        IRepository<NotificationLog> logRepository,
         INotificationQueue notificationQueue,
         ISubscriptionValidationService subscriptionValidation,
         IUnitOfWork unitOfWork,
         ILogger<NotificationAppService> logger)
     {
-        _notificationRepository = notificationRepository;
-        _logRepository = logRepository;
         _notificationQueue = notificationQueue;
         _subscriptionValidation = subscriptionValidation;
         _unitOfWork = unitOfWork;
@@ -66,7 +60,7 @@ public class NotificationAppService : INotificationService
                 : NotificationStatus.Processing
         };
 
-        await _notificationRepository.AddAsync(notification, cancellationToken);
+        await _unitOfWork.GetRepository<Notification>().AddAsync(notification, cancellationToken);
 
         var log = new NotificationLog
         {
@@ -74,7 +68,7 @@ public class NotificationAppService : INotificationService
             Status = notification.Status,
             Message = "Notification created and queued for processing"
         };
-        await _logRepository.AddAsync(log, cancellationToken);
+        await _unitOfWork.GetRepository<NotificationLog>().AddAsync(log, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         await _subscriptionValidation.IncrementUsageAsync(subscriptionId, cancellationToken);
@@ -138,7 +132,7 @@ public class NotificationAppService : INotificationService
         Guid notificationId,
         CancellationToken cancellationToken = default)
     {
-        var notification = await _notificationRepository
+        var notification = await _unitOfWork.GetRepository<Notification>()
             .QueryNoTracking()
             .Include(n => n.Logs.OrderByDescending(l => l.CreatedAt))
             .FirstOrDefaultAsync(n => n.Id == notificationId, cancellationToken);
@@ -180,7 +174,7 @@ public class NotificationAppService : INotificationService
         NotificationQueryRequest query,
         CancellationToken cancellationToken = default)
     {
-        var queryable = _notificationRepository.QueryNoTracking();
+        var queryable = _unitOfWork.GetRepository<Notification>().QueryNoTracking();
 
         if (userId.HasValue)
             queryable = queryable.Where(n => n.UserId == userId.Value);
@@ -236,7 +230,7 @@ public class NotificationAppService : INotificationService
 
     public async Task<bool> CancelNotificationAsync(Guid notificationId, CancellationToken cancellationToken = default)
     {
-        var notification = await _notificationRepository.GetByIdAsync(notificationId, cancellationToken);
+        var notification = await _unitOfWork.GetRepository<Notification>().GetByIdAsync(notificationId, cancellationToken);
         if (notification == null) return false;
 
         if (notification.Status != NotificationStatus.Pending)
@@ -255,8 +249,8 @@ public class NotificationAppService : INotificationService
             Message = "Notification cancelled by user"
         };
 
-        await _notificationRepository.UpdateAsync(notification, cancellationToken);
-        await _logRepository.AddAsync(log, cancellationToken);
+        await _unitOfWork.GetRepository<Notification>().UpdateAsync(notification, cancellationToken);
+        await _unitOfWork.GetRepository<NotificationLog>().AddAsync(log, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Notification {Id} cancelled", notificationId);
@@ -265,7 +259,7 @@ public class NotificationAppService : INotificationService
 
     public async Task<bool> RetryNotificationAsync(Guid notificationId, CancellationToken cancellationToken = default)
     {
-        var notification = await _notificationRepository.GetByIdAsync(notificationId, cancellationToken);
+        var notification = await _unitOfWork.GetRepository<Notification>().GetByIdAsync(notificationId, cancellationToken);
         if (notification == null) return false;
 
         if (notification.Status != NotificationStatus.Failed)
@@ -285,8 +279,8 @@ public class NotificationAppService : INotificationService
             Message = $"Manual retry initiated. Attempt {notification.RetryCount}"
         };
 
-        await _notificationRepository.UpdateAsync(notification, cancellationToken);
-        await _logRepository.AddAsync(log, cancellationToken);
+        await _unitOfWork.GetRepository<Notification>().UpdateAsync(notification, cancellationToken);
+        await _unitOfWork.GetRepository<NotificationLog>().AddAsync(log, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         await _notificationQueue.EnqueueAsync(notification, cancellationToken);

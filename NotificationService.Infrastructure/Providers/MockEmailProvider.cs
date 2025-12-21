@@ -8,9 +8,9 @@ public class MockEmailProvider : INotificationProvider
 {
     private readonly ILogger<MockEmailProvider> _logger;
     private static readonly Random _random = new();
-
+    private readonly bool _isAvailable = true;
     public string ProviderName => "MockEmailProvider";
-
+    public bool IsAvailable => _isAvailable;
     public MockEmailProvider(ILogger<MockEmailProvider> logger)
     {
         _logger = logger;
@@ -70,5 +70,11 @@ public class MockEmailProvider : INotificationProvider
             Message: "Email delivered",
             ProviderResponse: $"{{\"status\":\"delivered\",\"deliveredAt\":\"{DateTime.UtcNow:O}\"}}"
         );
+    }
+
+    public Task<bool> HealthCheckAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogDebug("MockEmail: Health check - Available: {IsAvailable}", _isAvailable);
+        return Task.FromResult(_isAvailable);
     }
 }

@@ -10,35 +10,29 @@ namespace NotificationService.Application.Services;
 
 public class DashboardService : IDashboardService
 {
-    private readonly IRepository<User> _userRepository;
-    private readonly IRepository<Subscription> _subscriptionRepository;
-    private readonly IRepository<Notification> _notificationRepository;
     private readonly INotificationQueue _notificationQueue;
     private readonly ILogger<DashboardService> _logger;
+    private readonly IUnitOfWork unitOfWork;
 
     public DashboardService(
-        IRepository<User> userRepository,
-        IRepository<Subscription> subscriptionRepository,
-        IRepository<Notification> notificationRepository,
         INotificationQueue notificationQueue,
-        ILogger<DashboardService> logger)
+        ILogger<DashboardService> logger,
+        IUnitOfWork unitOfWork)
     {
-        _userRepository = userRepository;
-        _subscriptionRepository = subscriptionRepository;
-        _notificationRepository = notificationRepository;
         _notificationQueue = notificationQueue;
         _logger = logger;
+        this.unitOfWork = unitOfWork;
     }
 
     public async Task<DashboardSummaryDto> GetDashboardSummaryAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Generating dashboard summary");
 
-        var totalUsers = await _userRepository.CountAsync(cancellationToken: cancellationToken);
-        var activeUsers = await _userRepository.CountAsync(u => u.IsActive, cancellationToken);
+        var totalUsers = await unitOfWork.GetRepository<User>().CountAsync(cancellationToken: cancellationToken);
+        var activeUsers = await unitOfWork.GetRepository<User>().CountAsync(u => u.IsActive, cancellationToken);
 
-        var totalSubscriptions = await _subscriptionRepository.CountAsync(cancellationToken: cancellationToken);
-        var activeSubscriptions = await _subscriptionRepository.CountAsync(
+        var totalSubscriptions = await unitOfWork.GetRepository<Subscription>().CountAsync(cancellationToken: cancellationToken);
+        var activeSubscriptions = await unitOfWork.GetRepository<Subscription>().CountAsync(
             s => s.Status == SubscriptionStatus.Active, cancellationToken);
 
         var today = DateTime.UtcNow.Date;
@@ -60,7 +54,7 @@ public class DashboardService : IDashboardService
 
     public async Task<List<UserStatsDto>> GetTopUsersAsync(int count = 10, CancellationToken cancellationToken = default)
     {
-        var users = await _userRepository
+        var users = await unitOfWork.GetRepository<User>()
             .QueryNoTracking()
             .Include(u => u.Subscriptions)
             .Include(u => u.Notifications)
@@ -83,20 +77,33 @@ public class DashboardService : IDashboardService
         DateTime toDate,
         CancellationToken cancellationToken = default)
     {
-        var stats = await _notificationRepository
-            .QueryNoTracking()
-            .Where(n => n.CreatedAt.Date >= fromDate.Date && n.CreatedAt.Date <= toDate.Date)
+        var query = unitOfWork.GetRepository<Notification>()
+            .GetAllQueryable(n => n.CreatedAt.Date >= fromDate.Date && n.CreatedAt.Date <= toDate.Date);
+
+        // Fix: Project to anonymous type first to allow EF Core translation
+        var statsData = await query
             .GroupBy(n => n.CreatedAt.Date)
-            .Select(g => new DailyNotificationStatsDto(
-                g.Key,
-                g.Count(),
-                g.Count(n => n.Status == NotificationStatus.Sent || n.Status == NotificationStatus.Delivered),
-                g.Count(n => n.Status == NotificationStatus.Failed),
-                g.Count(n => n.Type == NotificationType.Email),
-                g.Count(n => n.Type == NotificationType.Sms)
-            ))
+            .Select(g => new
+            {
+                Date = g.Key,
+                Total = g.Count(),
+                SentOrDelivered = g.Count(n => n.Status == NotificationStatus.Sent || n.Status == NotificationStatus.Delivered),
+                Failed = g.Count(n => n.Status == NotificationStatus.Failed),
+                Email = g.Count(n => n.Type == NotificationType.Email),
+                Sms = g.Count(n => n.Type == NotificationType.Sms)
+            })
             .OrderBy(s => s.Date)
             .ToListAsync(cancellationToken);
+
+        // Map to DTO in memory
+        var stats = statsData.Select(s => new DailyNotificationStatsDto(
+            s.Date,
+            s.Total,
+            s.SentOrDelivered,
+            s.Failed,
+            s.Email,
+            s.Sms
+        )).ToList();
 
         // Fill in missing dates with zero counts
         var allDates = Enumerable.Range(0, (toDate.Date - fromDate.Date).Days + 1)
@@ -115,7 +122,7 @@ public class DashboardService : IDashboardService
         DateTime today,
         CancellationToken cancellationToken)
     {
-        var notifications = _notificationRepository.QueryNoTracking();
+        var notifications = unitOfWork.GetRepository<Notification>().QueryNoTracking();
 
         var totalNotifications = await notifications.CountAsync(cancellationToken);
         var pendingNotifications = await notifications.CountAsync(n => n.Status == NotificationStatus.Pending, cancellationToken);

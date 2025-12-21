@@ -11,19 +11,13 @@ namespace NotificationService.Application.Services;
 
 public class SubscriptionService : ISubscriptionService
 {
-    private readonly IRepository<Subscription> _subscriptionRepository;
-    private readonly IRepository<User> _userRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<SubscriptionService> _logger;
 
     public SubscriptionService(
-        IRepository<Subscription> subscriptionRepository,
-        IRepository<User> userRepository,
         IUnitOfWork unitOfWork,
         ILogger<SubscriptionService> logger)
     {
-        _subscriptionRepository = subscriptionRepository;
-        _userRepository = userRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -34,7 +28,7 @@ public class SubscriptionService : ISubscriptionService
         int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
-        var query = _subscriptionRepository.QueryNoTracking();
+        var query = _unitOfWork.GetRepository<Subscription>().QueryNoTracking();
 
         if (userId.HasValue)
             query = query.Where(s => s.UserId == userId.Value);
@@ -69,7 +63,7 @@ public class SubscriptionService : ISubscriptionService
         Guid subscriptionId,
         CancellationToken cancellationToken = default)
     {
-        var subscription = await _subscriptionRepository.GetByIdAsync(subscriptionId, cancellationToken);
+        var subscription = await _unitOfWork.GetRepository<Subscription>().GetByIdAsync(subscriptionId, cancellationToken);
         if (subscription == null) return null;
 
         return new SubscriptionDto(
@@ -94,7 +88,7 @@ public class SubscriptionService : ISubscriptionService
     {
         _logger.LogInformation("Creating subscription for user {UserId}", request.UserId);
 
-        var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
+        var user = await _unitOfWork.GetRepository<User>().GetByIdAsync(request.UserId, cancellationToken);
         if (user == null)
             throw new InvalidOperationException("User not found");
 
@@ -111,7 +105,7 @@ public class SubscriptionService : ISubscriptionService
             AllowEmail = request.AllowEmail
         };
 
-        await _subscriptionRepository.AddAsync(subscription, cancellationToken);
+        await _unitOfWork.GetRepository<Subscription>().AddAsync(subscription, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Created subscription {Id} for user {UserId}", subscription.Id, request.UserId);
@@ -138,7 +132,7 @@ public class SubscriptionService : ISubscriptionService
         UpdateSubscriptionRequest request,
         CancellationToken cancellationToken = default)
     {
-        var subscription = await _subscriptionRepository.GetByIdAsync(subscriptionId, cancellationToken);
+        var subscription = await _unitOfWork.GetRepository<Subscription>().GetByIdAsync(subscriptionId, cancellationToken);
         if (subscription == null) return null;
 
         if (!string.IsNullOrWhiteSpace(request.Name))
@@ -162,7 +156,7 @@ public class SubscriptionService : ISubscriptionService
         if (request.AllowEmail.HasValue)
             subscription.AllowEmail = request.AllowEmail.Value;
 
-        await _subscriptionRepository.UpdateAsync(subscription, cancellationToken);
+        await _unitOfWork.GetRepository<Subscription>().UpdateAsync(subscription, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Updated subscription {Id}", subscriptionId);
@@ -187,13 +181,13 @@ public class SubscriptionService : ISubscriptionService
         Guid subscriptionId,
         CancellationToken cancellationToken = default)
     {
-        var subscription = await _subscriptionRepository.GetByIdAsync(subscriptionId, cancellationToken);
+        var subscription = await _unitOfWork.GetRepository<Subscription>().GetByIdAsync(subscriptionId, cancellationToken);
         if (subscription == null) return null;
 
         var newKey = GenerateSubscriptionKey();
         subscription.SubscriptionKey = newKey;
 
-        await _subscriptionRepository.UpdateAsync(subscription, cancellationToken);
+        await _unitOfWork.GetRepository<Subscription>().UpdateAsync(subscription, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Regenerated key for subscription {Id}", subscriptionId);
@@ -205,10 +199,10 @@ public class SubscriptionService : ISubscriptionService
         Guid subscriptionId,
         CancellationToken cancellationToken = default)
     {
-        var subscription = await _subscriptionRepository.GetByIdAsync(subscriptionId, cancellationToken);
+        var subscription = await _unitOfWork.GetRepository<Subscription>().GetByIdAsync(subscriptionId, cancellationToken);
         if (subscription == null) return false;
 
-        await _subscriptionRepository.SoftDeleteAsync(subscription, cancellationToken);
+        await _unitOfWork.GetRepository<Subscription>().SoftDeleteAsync(subscription, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Soft deleted subscription {Id}", subscriptionId);

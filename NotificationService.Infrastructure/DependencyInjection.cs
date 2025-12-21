@@ -16,20 +16,19 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         // Database
-        services.AddDbContext<NotificationDbContext>(options =>
-            options.UseSqlServer(
-                configuration.GetConnectionString("DefaultConnection"),
-                sqlOptions =>
-                {
-                    sqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 3,
-                        maxRetryDelay: TimeSpan.FromSeconds(30),
-                        errorNumbersToAdd: null);
-                    sqlOptions.CommandTimeout(60);
-                }));
+        services.AddDbContextFactory<NotificationDbContext>(
+             options => options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"),
+             p =>
+             {
+                 p.EnableRetryOnFailure(
+                     maxRetryCount: 3,
+                     maxRetryDelay: TimeSpan.FromSeconds(30),
+                     errorNumbersToAdd: null);
+                 p.MaxBatchSize(1500);
+             }),
+             ServiceLifetime.Scoped);
 
         // Repositories
-        services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // Notification Queue
