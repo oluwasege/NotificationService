@@ -317,6 +317,331 @@ The admin dashboard provides:
    - Enter `Bearer <your-token>` in the Authorization field
 4. Test any endpoint using the **Try it out** button
 
+## ?? Testing
+
+The project includes a comprehensive unit test suite with **94 tests** targeting **23%+ code coverage**.
+
+### Running Tests
+
+**Using Visual Studio:**
+1. Open **Test Explorer** (Test ? Test Explorer)
+2. Click **Run All Tests**
+3. View test results and code coverage in the Test Explorer
+
+**Using .NET CLI:**
+```bash
+# Run all tests
+dotnet test
+
+# Run tests with detailed output
+dotnet test --verbosity detailed
+
+# Run tests for a specific project
+dotnet test NotificationService.Tests/NotificationService.Tests.csproj
+```
+
+### Generating Coverage Reports
+
+**Using Coverlet (included in test project):**
+```bash
+# Run tests and generate coverage report
+dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
+
+# Generate HTML coverage report (requires reportgenerator)
+dotnet tool install -g dotnet-reportgenerator-globaltool
+reportgenerator -reports:NotificationService.Tests/coverage/coverage.opencover.xml -targetdir:coveragereport -reporttypes:Html
+
+# View the HTML report
+# Open coveragereport/index.html in your browser
+```
+
+### Test Structure
+
+The test project covers:
+- **Application Layer**: Services, validators, and business logic (39 tests)
+- **API Layer**: Controllers and HTTP endpoints (15 tests)
+- **Domain Layer**: Entity validation and domain logic (3 tests)
+- **Validators**: FluentValidation rules for all DTOs (40 tests)
+
+## ?? JSON Request/Response Examples
+
+### Sending an Email Notification
+
+**Request:**
+```http
+POST /api/notifications
+Content-Type: application/json
+X-Subscription-Key: sk_live_acme_a1b2c3d4e5f6g7h8i9j0
+
+{
+  "type": "Email",
+  "recipient": "user@example.com",
+  "subject": "Welcome to Our Service!",
+  "body": "<h1>Welcome!</h1><p>Thank you for joining us.</p>",
+  "priority": "Normal"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "notificationId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "status": "Processing",
+  "message": "Notification created successfully",
+  "createdAt": "2025-12-21T10:30:00Z"
+}
+```
+
+### Sending an SMS Notification
+
+**Request:**
+```http
+POST /api/notifications
+Content-Type: application/json
+X-Subscription-Key: sk_live_acme_a1b2c3d4e5f6g7h8i9j0
+
+{
+  "type": "Sms",
+  "recipient": "+12025551234",
+  "subject": "Verification Code",
+  "body": "Your verification code is: 123456",
+  "priority": "High"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "notificationId": "7c8f9e45-2341-4892-a7d3-5e6f7a8b9c0d",
+  "status": "Processing",
+  "message": "Notification created successfully",
+  "createdAt": "2025-12-21T10:35:00Z"
+}
+```
+
+### Sending Batch Notifications
+
+**Request:**
+```http
+POST /api/notifications/batch
+Content-Type: application/json
+X-Subscription-Key: sk_live_acme_a1b2c3d4e5f6g7h8i9j0
+
+{
+  "notifications": [
+    {
+      "type": "Email",
+      "recipient": "user1@example.com",
+      "subject": "Newsletter",
+      "body": "Monthly newsletter content",
+      "priority": "Low"
+    },
+    {
+      "type": "Email",
+      "recipient": "user2@example.com",
+      "subject": "Newsletter",
+      "body": "Monthly newsletter content",
+      "priority": "Low"
+    }
+  ]
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "totalCount": 2,
+  "acceptedCount": 2,
+  "rejectedCount": 0,
+  "results": [
+    {
+      "index": 0,
+      "notificationId": "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+      "accepted": true,
+      "errorMessage": null
+    },
+    {
+      "index": 1,
+      "notificationId": "2b3c4d5e-6f7a-8b9c-0d1e-2f3a4b5c6d7e",
+      "accepted": true,
+      "errorMessage": null
+    }
+  ]
+}
+```
+
+### Admin Login
+
+**Request:**
+```http
+POST /api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@notificationservice.com",
+  "password": "Admin@123"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "tokenType": "Bearer",
+  "expiresIn": 3600,
+  "user": {
+    "id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+    "name": "System Administrator",
+    "email": "admin@notificationservice.com",
+    "role": "SuperAdmin",
+    "isActive": true,
+    "createdAt": "2025-01-01T00:00:00Z",
+    "lastLoginAt": "2025-12-21T10:40:00Z"
+  }
+}
+```
+
+### Creating a User
+
+**Request:**
+```http
+POST /api/admin/users
+Content-Type: application/json
+Authorization: Bearer <your-jwt-token>
+
+{
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "password": "SecurePass123!",
+  "role": "Admin"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "role": "Admin",
+  "isActive": true,
+  "createdAt": "2025-12-21T10:45:00Z",
+  "lastLoginAt": null
+}
+```
+
+### Getting Notification Details
+
+**Request:**
+```http
+GET /api/notifications/3fa85f64-5717-4562-b3fc-2c963f66afa6
+X-Subscription-Key: sk_live_acme_a1b2c3d4e5f6g7h8i9j0
+```
+
+**Response (200 OK):**
+```json
+{
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "type": "Email",
+  "status": "Delivered",
+  "priority": "Normal",
+  "recipient": "user@example.com",
+  "subject": "Welcome to Our Service!",
+  "body": "<h1>Welcome!</h1><p>Thank you for joining us.</p>",
+  "metadata": null,
+  "retryCount": 0,
+  "maxRetries": 3,
+  "createdAt": "2025-12-21T10:30:00Z",
+  "scheduledAt": null,
+  "sentAt": "2025-12-21T10:30:05Z",
+  "deliveredAt": "2025-12-21T10:30:10Z",
+  "errorMessage": null,
+  "externalId": "ext-msg-12345",
+  "correlationId": "a1b2c3d4e5f6",
+  "userId": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+  "subscriptionId": "4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f",
+  "logs": [
+    {
+      "id": "log-1",
+      "status": "Processing",
+      "message": "Notification created and queued for processing",
+      "details": null,
+      "createdAt": "2025-12-21T10:30:00Z"
+    },
+    {
+      "id": "log-2",
+      "status": "Delivered",
+      "message": "Notification delivered successfully",
+      "details": "Message ID: ext-msg-12345",
+      "createdAt": "2025-12-21T10:30:10Z"
+    }
+  ]
+}
+```
+
+## ?? Package Manager Commands
+
+### Common NuGet Operations
+
+```bash
+# Restore all packages for the solution
+dotnet restore NotificationService.sln
+
+# Add a new package to a project
+dotnet add NotificationService.Api/NotificationService.Api.csproj package PackageName
+
+# Update a package
+dotnet add NotificationService.Api/NotificationService.Api.csproj package PackageName --version 1.2.3
+
+# Remove a package
+dotnet remove NotificationService.Api/NotificationService.Api.csproj package PackageName
+
+# List installed packages
+dotnet list NotificationService.Api/NotificationService.Api.csproj package
+```
+
+### Entity Framework Commands
+
+```bash
+# Add a new migration
+dotnet ef migrations add MigrationName --project NotificationService.Infrastructure --startup-project NotificationService.Api
+
+# Update database to latest migration
+dotnet ef database update --project NotificationService.Infrastructure --startup-project NotificationService.Api
+
+# Remove last migration (if not applied)
+dotnet ef migrations remove --project NotificationService.Infrastructure --startup-project NotificationService.Api
+
+# Generate SQL script from migrations
+dotnet ef migrations script --project NotificationService.Infrastructure --startup-project NotificationService.Api --output migration.sql
+
+# Drop database
+dotnet ef database drop --project NotificationService.Infrastructure --startup-project NotificationService.Api
+```
+
+### Building and Running
+
+```bash
+# Build the entire solution
+dotnet build NotificationService.sln
+
+# Build in Release mode
+dotnet build NotificationService.sln --configuration Release
+
+# Clean build artifacts
+dotnet clean NotificationService.sln
+
+# Run the API
+cd NotificationService.Api
+dotnet run
+
+# Run with specific environment
+dotnet run --environment Production
+
+# Publish for deployment
+dotnet publish NotificationService.Api/NotificationService.Api.csproj --configuration Release --output ./publish
+```
+
 ## ?? Configuration
 
 ### JWT Settings
