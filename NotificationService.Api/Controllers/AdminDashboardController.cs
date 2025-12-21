@@ -30,9 +30,9 @@ public class AdminDashboardController : ControllerBase
     [SwaggerOperation(
         Summary = "Get Dashboard Summary",
         Description = "Get comprehensive dashboard with user, subscription, and notification statistics")]
-    [SwaggerResponse(200, "Dashboard data", typeof(DashboardSummaryDto))]
-    [SwaggerResponse(401, "Unauthorized")]
-    [SwaggerResponse(403, "Forbidden - Admin access required")]
+    [ProducesResponseType(typeof(DashboardSummaryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<DashboardSummaryDto>> GetDashboard(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Admin {User} accessing dashboard", User.Identity?.Name);
@@ -45,7 +45,7 @@ public class AdminDashboardController : ControllerBase
     /// </summary>
     [HttpGet("top-users")]
     [SwaggerOperation(Summary = "Get Top Users", Description = "Get top users by notification count")]
-    [SwaggerResponse(200, "Top users list", typeof(List<UserStatsDto>))]
+    [ProducesResponseType(typeof(List<UserStatsDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<UserStatsDto>>> GetTopUsers(
         [FromQuery] int count = 10,
         CancellationToken cancellationToken = default)
@@ -59,7 +59,7 @@ public class AdminDashboardController : ControllerBase
     /// </summary>
     [HttpGet("stats")]
     [SwaggerOperation(Summary = "Get Notification Stats", Description = "Get daily notification statistics")]
-    [SwaggerResponse(200, "Statistics", typeof(List<DailyNotificationStatsDto>))]
+    [ProducesResponseType(typeof(List<DailyNotificationStatsDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<DailyNotificationStatsDto>>> GetNotificationStats(
         [FromQuery] DateTime? fromDate,
         [FromQuery] DateTime? toDate,

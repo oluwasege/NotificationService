@@ -35,7 +35,7 @@ public class AdminSubscriptionsController : ControllerBase
     /// </summary>
     [HttpGet]
     [SwaggerOperation(Summary = "List Subscriptions", Description = "Get paginated list of all subscriptions")]
-    [SwaggerResponse(200, "Subscriptions list", typeof(PagedResult<SubscriptionDto>))]
+    [ProducesResponseType(typeof(PagedResult<SubscriptionDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<PagedResult<SubscriptionDto>>> GetSubscriptions(
         [FromQuery] Guid? userId,
         [FromQuery] int page = 1,
@@ -51,8 +51,8 @@ public class AdminSubscriptionsController : ControllerBase
     /// </summary>
     [HttpGet("{id:guid}")]
     [SwaggerOperation(Summary = "Get Subscription", Description = "Get subscription details")]
-    [SwaggerResponse(200, "Subscription details", typeof(SubscriptionDto))]
-    [SwaggerResponse(404, "Subscription not found")]
+    [ProducesResponseType(typeof(SubscriptionDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<SubscriptionDto>> GetSubscription(Guid id, CancellationToken cancellationToken)
     {
         var subscription = await _subscriptionService.GetSubscriptionByIdAsync(id, cancellationToken);
@@ -70,8 +70,8 @@ public class AdminSubscriptionsController : ControllerBase
     [SwaggerOperation(
         Summary = "Create Subscription",
         Description = "Create a new subscription. Returns the full subscription key (only visible once)")]
-    [SwaggerResponse(201, "Subscription created with key", typeof(SubscriptionDto))]
-    [SwaggerResponse(400, "Validation error")]
+    [ProducesResponseType(typeof(SubscriptionDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<SubscriptionDto>> CreateSubscription(
         [FromBody] CreateSubscriptionRequest request,
         CancellationToken cancellationToken)
@@ -94,8 +94,8 @@ public class AdminSubscriptionsController : ControllerBase
     /// </summary>
     [HttpPut("{id:guid}")]
     [SwaggerOperation(Summary = "Update Subscription", Description = "Update subscription settings")]
-    [SwaggerResponse(200, "Subscription updated", typeof(SubscriptionDto))]
-    [SwaggerResponse(404, "Subscription not found")]
+    [ProducesResponseType(typeof(SubscriptionDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<SubscriptionDto>> UpdateSubscription(
         Guid id,
         [FromBody] UpdateSubscriptionRequest request,
@@ -122,8 +122,8 @@ public class AdminSubscriptionsController : ControllerBase
     [SwaggerOperation(
         Summary = "Regenerate Subscription Key",
         Description = "Generate a new subscription key. Old key will be invalidated immediately.")]
-    [SwaggerResponse(200, "New key generated", typeof(RegenerateKeyResponse))]
-    [SwaggerResponse(404, "Subscription not found")]
+    [ProducesResponseType(typeof(RegenerateKeyResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<RegenerateKeyResponse>> RegenerateSubscriptionKey(
         Guid id,
         CancellationToken cancellationToken)
@@ -144,8 +144,8 @@ public class AdminSubscriptionsController : ControllerBase
     /// </summary>
     [HttpDelete("{id:guid}")]
     [SwaggerOperation(Summary = "Delete Subscription", Description = "Soft delete a subscription")]
-    [SwaggerResponse(204, "Subscription deleted")]
-    [SwaggerResponse(404, "Subscription not found")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteSubscription(Guid id, CancellationToken cancellationToken)
     {
         var result = await _subscriptionService.DeleteSubscriptionAsync(id, cancellationToken);

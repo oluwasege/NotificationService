@@ -38,10 +38,10 @@ public class NotificationsController : ControllerBase
     [SwaggerOperation(
         Summary = "Send Notification",
         Description = "Send an email or SMS notification. Requires X-Subscription-Key header.")]
-    [SwaggerResponse(201, "Notification created and queued", typeof(SendNotificationResponse))]
-    [SwaggerResponse(400, "Validation error")]
-    [SwaggerResponse(401, "Invalid or missing subscription key")]
-    [SwaggerResponse(429, "Rate limit exceeded")]
+    [ProducesResponseType(typeof(SendNotificationResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<SendNotificationResponse>> SendNotification(
         [FromBody] SendNotificationRequest request,
         CancellationToken cancellationToken)
@@ -75,9 +75,9 @@ public class NotificationsController : ControllerBase
     [SwaggerOperation(
         Summary = "Send Batch Notifications",
         Description = "Send multiple notifications in a single request. Maximum 1000 per batch.")]
-    [SwaggerResponse(200, "Batch processed", typeof(SendBatchNotificationResponse))]
-    [SwaggerResponse(400, "Validation error")]
-    [SwaggerResponse(401, "Invalid or missing subscription key")]
+    [ProducesResponseType(typeof(SendBatchNotificationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<SendBatchNotificationResponse>> SendBatchNotifications(
         [FromBody] SendBatchNotificationRequest request,
         CancellationToken cancellationToken)
@@ -108,8 +108,8 @@ public class NotificationsController : ControllerBase
     [SwaggerOperation(
         Summary = "Get Notification",
         Description = "Get detailed information about a specific notification including logs")]
-    [SwaggerResponse(200, "Notification details", typeof(NotificationDetailDto))]
-    [SwaggerResponse(404, "Notification not found")]
+    [ProducesResponseType(typeof(NotificationDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<NotificationDetailDto>> GetNotification(
         Guid id,
         CancellationToken cancellationToken)
@@ -137,7 +137,7 @@ public class NotificationsController : ControllerBase
     [SwaggerOperation(
         Summary = "List Notifications",
         Description = "Get paginated list of notifications with optional filtering")]
-    [SwaggerResponse(200, "Notifications list", typeof(PagedResult<NotificationDto>))]
+    [ProducesResponseType(typeof(PagedResult<NotificationDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<PagedResult<NotificationDto>>> GetNotifications(
         [FromQuery] NotificationQueryRequest query,
         CancellationToken cancellationToken)
@@ -154,9 +154,9 @@ public class NotificationsController : ControllerBase
     [SwaggerOperation(
         Summary = "Cancel Notification",
         Description = "Cancel a notification that is still pending. Cannot cancel sent notifications.")]
-    [SwaggerResponse(200, "Notification cancelled")]
-    [SwaggerResponse(400, "Cannot cancel notification")]
-    [SwaggerResponse(404, "Notification not found")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> CancelNotification(Guid id, CancellationToken cancellationToken)
     {
         var result = await _notificationService.CancelNotificationAsync(id, cancellationToken);
@@ -175,9 +175,9 @@ public class NotificationsController : ControllerBase
     [SwaggerOperation(
         Summary = "Retry Notification",
         Description = "Retry sending a failed notification")]
-    [SwaggerResponse(200, "Notification queued for retry")]
-    [SwaggerResponse(400, "Cannot retry notification")]
-    [SwaggerResponse(404, "Notification not found")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RetryNotification(Guid id, CancellationToken cancellationToken)
     {
         var result = await _notificationService.RetryNotificationAsync(id, cancellationToken);
@@ -196,7 +196,7 @@ public class NotificationsController : ControllerBase
     [SwaggerOperation(
         Summary = "Get Quota Status",
         Description = "Get remaining daily and monthly notification quota for current subscription")]
-    [ProducesResponseType(typeof(object), 200)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public IActionResult GetQuotaStatus()
     {
         return Ok(new

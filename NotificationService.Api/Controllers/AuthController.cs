@@ -29,8 +29,8 @@ public class AuthController : ControllerBase
     [SwaggerOperation(
         Summary = "Admin Login",
         Description = "Authenticate with email and password to receive a JWT token for admin operations")]
-    [SwaggerResponse(200, "Login successful", typeof(LoginResponse))]
-    [SwaggerResponse(401, "Invalid credentials")]
+    [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request)
     {
         _logger.LogInformation("Login attempt for {Email}", request.Email);
@@ -52,8 +52,8 @@ public class AuthController : ControllerBase
     [SwaggerOperation(
         Summary = "Get Current User",
         Description = "Get information about the currently authenticated admin user")]
-    [SwaggerResponse(200, "User info retrieved", typeof(UserDto))]
-    [SwaggerResponse(401, "Not authenticated")]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<UserDto>> GetCurrentUser()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

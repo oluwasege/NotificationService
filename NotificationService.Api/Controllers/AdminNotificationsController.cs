@@ -28,7 +28,7 @@ public class AdminNotificationsController : ControllerBase
     /// </summary>
     [HttpGet]
     [SwaggerOperation(Summary = "List All Notifications", Description = "Get all notifications across all users")]
-    [SwaggerResponse(200, "Notifications list", typeof(PagedResult<NotificationDto>))]
+    [ProducesResponseType(typeof(PagedResult<NotificationDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<PagedResult<NotificationDto>>> GetAllNotifications(
         [FromQuery] NotificationQueryRequest query,
         CancellationToken cancellationToken)
@@ -42,8 +42,8 @@ public class AdminNotificationsController : ControllerBase
     /// </summary>
     [HttpGet("{id:guid}")]
     [SwaggerOperation(Summary = "Get Notification Details", Description = "Get notification details with logs")]
-    [SwaggerResponse(200, "Notification details", typeof(NotificationDetailDto))]
-    [SwaggerResponse(404, "Notification not found")]
+    [ProducesResponseType(typeof(NotificationDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<NotificationDetailDto>> GetNotificationDetails(
         Guid id,
         CancellationToken cancellationToken)
