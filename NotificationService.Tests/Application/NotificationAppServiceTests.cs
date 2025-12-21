@@ -286,4 +286,27 @@ public class NotificationAppServiceTests
         // Assert
         result.Should().BeFalse();
     }
+
+    [Fact]
+    public async Task RetryNotificationAsync_NotFailedNotification_ReturnsFalse()
+    {
+        // Arrange
+        var notificationId = Guid.NewGuid();
+        var notification = new Notification
+        {
+            Id = notificationId,
+            Status = NotificationStatus.Delivered
+        };
+
+        _notificationRepoMock
+            .Setup(x => x.GetByIdAsync(notificationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(notification);
+
+        // Act
+        var result = await _service.RetryNotificationAsync(notificationId);
+
+        // Assert
+        result.Should().BeFalse();
+        _notificationRepoMock.Verify(x => x.UpdateAsync(It.IsAny<Notification>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }
