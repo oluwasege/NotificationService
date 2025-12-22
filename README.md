@@ -2,18 +2,35 @@
 
 A production-ready enterprise notification system built with .NET 9, featuring event-driven architecture, guaranteed delivery, and support for Email and SMS notifications.
 
-## ?? Features
+## ? Features
 
+### Core Capabilities
 - **Multi-Channel Notifications**: Send Email and SMS notifications through a unified API
 - **Event-Driven Architecture**: Asynchronous processing with priority-based queuing
 - **Guaranteed Delivery**: Automatic retry with exponential backoff (up to 3 retries)
+- **Transactional Outbox Pattern**: Ensures reliable message delivery with database consistency
+
+### Enterprise Features
+- **Notification Templates**: Reusable templates with Scriban syntax for dynamic variable substitution
+- **Webhook Subscriptions**: Real-time delivery status updates via configurable webhooks
+- **Scheduled Notifications**: Schedule notifications for future delivery
+- **Idempotency Support**: Prevent duplicate notifications with idempotency keys
+- **In-Memory Caching**: Performance optimization with configurable cache expiration
+
+### Security & Access Control
 - **Subscription-Based Authentication**: Unique API keys for each client subscription
 - **JWT Admin Authentication**: Secure admin portal with role-based access control
 - **Rate Limiting**: Daily and monthly quotas per subscription
+
+### Monitoring & Management
 - **Real-time Dashboard**: Monitor notifications, users, and system health
 - **Comprehensive Logging**: Structured logging with Serilog
+- **Health Checks**: Built-in health endpoints with dependency monitoring
+
+### Architecture
 - **Clean Architecture**: Domain-Driven Design with separation of concerns
 - **Code-First Database**: EF Core with SQL Server
+- **Unit Tested**: Comprehensive test coverage with xUnit and FakeItEasy
 
 ## ?? Prerequisites
 
@@ -22,7 +39,7 @@ A production-ready enterprise notification system built with .NET 9, featuring e
 - **SQL Server** (LocalDB, SQL Server Express, or full SQL Server)
 - **Git** (optional, for cloning)
 
-## ??? Setup Instructions
+## ?? Setup Instructions
 
 ### Step 1: Clone or Download the Solution
 
@@ -49,7 +66,7 @@ Update the connection string in `NotificationService.Api/appsettings.json`:
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=NotificationServiceDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
+    "DefaultConnection": "Server=.;Database=NotificationServiceDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
   }
 }
 ```
@@ -57,6 +74,11 @@ Update the connection string in `NotificationService.Api/appsettings.json`:
 For SQL Server Express:
 ```json
 "DefaultConnection": "Server=.\\SQLEXPRESS;Database=NotificationServiceDb;Trusted_Connection=True;TrustServerCertificate=True"
+```
+
+For LocalDB:
+```json
+"DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=NotificationServiceDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
 ```
 
 ### Step 4: Apply Database Migrations
@@ -95,6 +117,28 @@ dotnet run
 - **Swagger UI**: `https://localhost:<port>/` (root URL)
 - **Health Check**: `https://localhost:<port>/api/health`
 
+## ?? Running Tests
+
+The solution includes a comprehensive test suite using xUnit and FakeItEasy.
+
+### Run All Tests
+
+**Using Visual Studio:**
+1. Open **Test ? Test Explorer**
+2. Click **Run All Tests**
+
+**Using .NET CLI:**
+```bash
+dotnet test NotificationService.Tests
+```
+
+### Test Coverage
+
+The test suite covers:
+- **Services**: `AuthServiceTests`, `DashboardServiceTests`, `NotificationAppServiceTests`, `SubscriptionServiceTests`, `SubscriptionValidationServiceTests`, `TemplateServiceTests`, `UserServiceTests`, `WebhookServiceTests`
+- **Background Services**: `NotificationProcessorServiceTests`
+- **Controllers**: `NotificationsControllerTests`
+
 ## ?? Seeded Test Data
 
 The application automatically seeds the following test data on first run:
@@ -114,6 +158,20 @@ The application automatically seeds the following test data on first run:
 | `sk_test_acme_z9y8x7w6v5u4t3s2r1q0` | Acme Corp | Test key (100 daily limit) |
 | `sk_live_techstart_m1n2o3p4q5r6s7t8u9v0` | TechStart Inc | Production key |
 | `sk_live_global_k1l2m3n4o5p6q7r8s9t0` | Global Services | Email only |
+
+### Notification Templates
+
+The seeded data includes sample templates for:
+- Welcome Email
+- Password Reset
+- Order Confirmation
+- OTP Verification
+- Weekly Reports
+- Invoice Emails
+
+### Webhook Subscriptions
+
+Pre-configured webhooks for testing webhook delivery functionality.
 
 ## ?? Authentication
 
@@ -226,6 +284,46 @@ curl -X GET "https://localhost:<port>/api/admin/dashboard" \
 }
 ```
 
+### Scheduled Notification
+
+```json
+{
+  "type": "Email",
+  "recipient": "user@example.com",
+  "subject": "Reminder",
+  "body": "Don't forget your appointment tomorrow!",
+  "scheduledAt": "2024-12-25T10:00:00Z"
+}
+```
+
+### Template-Based Notification
+
+```json
+{
+  "type": "Email",
+  "recipient": "user@example.com",
+  "templateId": "10000000-0000-0000-0000-000000000001",
+  "templateData": {
+    "user_name": "John Doe",
+    "company_name": "Acme Corp",
+    "email": "john@example.com",
+    "account_id": "ACC-12345"
+  }
+}
+```
+
+### Idempotent Notification
+
+```json
+{
+  "type": "Email",
+  "recipient": "user@example.com",
+  "subject": "Order Confirmation",
+  "body": "Your order has been confirmed.",
+  "idempotencyKey": "order-confirmation-12345"
+}
+```
+
 ### Priority Levels
 
 - **Low**: Background notifications, newsletters
@@ -233,45 +331,122 @@ curl -X GET "https://localhost:<port>/api/admin/dashboard" \
 - **High**: Important alerts, OTPs
 - **Critical**: Security alerts, critical system notifications
 
+## ?? Templates
+
+Templates use [Scriban](https://github.com/scriban/scriban) syntax for dynamic content:
+
+### Creating a Template
+
+```json
+{
+  "name": "Welcome Email",
+  "description": "Welcome email for new users",
+  "type": "Email",
+  "subjectTemplate": "Welcome to {{ company_name }}, {{ user_name }}!",
+  "bodyTemplate": "<h1>Hello {{ user_name }}!</h1><p>Welcome to {{ company_name }}.</p>"
+}
+```
+
+### Template Syntax Examples
+
+```scriban
+{{ variable_name }}           # Simple variable
+{{ if condition }}...{{ end }} # Conditional
+{{ for item in items }}...{{ end }} # Loop
+```
+
+## ?? Webhooks
+
+Webhooks provide real-time notifications about delivery status changes.
+
+### Creating a Webhook
+
+```json
+{
+  "name": "Status Updates",
+  "url": "https://your-server.com/webhook",
+  "events": "Sent,Delivered,Failed",
+  "secret": "your-webhook-secret"
+}
+```
+
+### Webhook Payload
+
+```json
+{
+  "notificationId": "guid",
+  "status": "Delivered",
+  "type": "Email",
+  "recipient": "user@example.com",
+  "timestamp": "2024-12-22T10:30:00Z",
+  "errorMessage": null,
+  "externalId": "provider-id"
+}
+```
+
+### Webhook Signature Verification
+
+Webhooks include an HMAC-SHA256 signature in the `X-Webhook-Signature` header for verification.
+
 ## ??? Architecture
 
 ```
 NotificationService.sln
-??? NotificationService.Api          # Web API Layer
-?   ??? Controllers/                 # API Controllers
-?   ??? Middleware/                  # Custom middleware
-?   ??? Extensions/                  # Extension methods
+??? NotificationService.Api              # Web API Layer
+?   ??? Controllers/                     # API Controllers
+?   ??? Middleware/                      # Custom middleware
+?   ??? Extensions/                      # Extension methods
 ?
-??? NotificationService.Application  # Application Layer
-?   ??? DTOs/                        # Data Transfer Objects
-?   ??? Interfaces/                  # Service interfaces
-?   ??? Services/                    # Business logic
-?   ??? Validators/                  # FluentValidation
+??? NotificationService.Application      # Application Layer
+?   ??? DTOs/                            # Data Transfer Objects
+?   ??? Interfaces/                      # Service interfaces
+?   ??? Services/                        # Business logic
+?   ??? Validators/                      # FluentValidation
 ?
-??? NotificationService.Domain       # Domain Layer
-?   ??? Entities/                    # Domain entities
-?   ??? Enums/                       # Enumerations
-?   ??? Interfaces/                  # Repository interfaces
+??? NotificationService.Domain           # Domain Layer
+?   ??? Entities/                        # Domain entities
+?   ??? Enums/                           # Enumerations
+?   ??? Exceptions/                      # Custom exceptions
+?   ??? Interfaces/                      # Repository interfaces
 ?
-??? NotificationService.Infrastructure  # Infrastructure Layer
-    ??? BackgroundServices/          # Notification processors
-    ??? Data/                        # DbContext & migrations
-    ??? Providers/                   # Mock SMS/Email providers
-    ??? Queue/                       # In-memory notification queue
-    ??? Repositories/                # Generic repository
-    ??? Seeding/                     # Database seeder
+??? NotificationService.Infrastructure   # Infrastructure Layer
+?   ??? BackgroundServices/              # Background processors
+?   ??? Caching/                         # Memory cache implementation
+?   ??? Data/                            # DbContext & migrations
+?   ??? Providers/                       # Mock SMS/Email providers
+?   ??? Queue/                           # In-memory notification queue
+?   ??? Repositories/                    # Generic repository & UoW
+?   ??? Seeding/                         # Database seeder
+?
+??? NotificationService.Tests            # Test Project
+    ??? BackgroundServices/              # Background service tests
+    ??? Controllers/                     # Controller tests
+    ??? Helpers/                         # Test utilities
+    ??? Services/                        # Service tests
 ```
 
 ## ?? Event-Driven Processing
 
-The notification system uses an event-driven architecture:
+The notification system uses an event-driven architecture with multiple background services:
+
+### Notification Flow
 
 1. **Notification Created**: API receives request, validates, stores in DB
-2. **Queue Enqueued**: Notification added to priority-based in-memory queue
-3. **Background Processing**: `NotificationProcessorService` picks up notifications
-4. **Provider Dispatch**: Routes to appropriate provider (Email/SMS)
-5. **Retry Logic**: Failed notifications automatically retry with exponential backoff
-6. **Delivery Confirmation**: Status updated to "Delivered" (simulated)
+2. **Outbox Entry**: Creates outbox message for transactional consistency
+3. **Queue Enqueued**: Notification added to priority-based in-memory queue
+4. **Background Processing**: `NotificationProcessorService` picks up notifications
+5. **Provider Dispatch**: Routes to appropriate provider (Email/SMS)
+6. **Webhook Delivery**: Sends status updates to registered webhooks
+7. **Retry Logic**: Failed notifications automatically retry with exponential backoff
+8. **Delivery Confirmation**: Status updated to "Delivered" (simulated)
+
+### Background Services
+
+| Service | Description |
+|---------|-------------|
+| `NotificationProcessorService` | Processes notifications from the priority queue |
+| `ScheduledNotificationService` | Picks up scheduled notifications when due |
+| `OutboxProcessorService` | Ensures reliable delivery via transactional outbox pattern |
 
 ### Priority Queue
 
@@ -324,7 +499,7 @@ The admin dashboard provides:
 ```json
 {
   "Jwt": {
-    "Secret": "YourSuperSecretKeyThatIsAtLeast32CharactersLong!",
+    "Secret": "YourSuperSecretKeyThatIsAtLeast32CharactersLongForProduction2024!",
     "Issuer": "NotificationService",
     "Audience": "NotificationServiceClients",
     "ExpiresInMinutes": 60
@@ -346,14 +521,16 @@ The admin dashboard provides:
 
 Before deploying to production:
 
-1. **Change JWT Secret**: Use a strong, unique secret
+1. **Change JWT Secret**: Use a strong, unique secret (minimum 32 characters)
 2. **Update Password Salt**: Use a unique salt value
-3. **Configure Real Providers**: Replace mock providers with actual SMS/Email services
+3. **Configure Real Providers**: Replace mock providers with actual SMS/Email services (e.g., SendGrid, Twilio)
 4. **Enable HTTPS**: Ensure SSL/TLS is properly configured
 5. **Set Up Monitoring**: Configure application insights or similar
 6. **Database**: Use a proper SQL Server instance (not LocalDB)
 7. **Rate Limiting**: Consider adding request rate limiting
 8. **Message Queue**: For high volume, consider replacing in-memory queue with RabbitMQ/Azure Service Bus
+9. **Distributed Cache**: Replace in-memory cache with Redis for multi-instance deployments
+10. **Webhook Security**: Ensure clients verify webhook signatures
 
 ## ?? License
 
