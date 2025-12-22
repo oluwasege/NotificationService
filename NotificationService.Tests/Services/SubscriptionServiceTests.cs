@@ -49,7 +49,7 @@ public class SubscriptionServiceTests
 
         var user = new User { Id = userId };
         A.CallTo(() => _userRepository.GetByIdAsync(userId, A<CancellationToken>._))
-            .Returns(Task.FromResult(user)); // FIX: Remove explicit <User?>, just use Task.FromResult(user)
+            .Returns(Task.FromResult(user)); 
 
         // Act
         var result = await _subscriptionService.CreateSubscriptionAsync(request);
@@ -81,7 +81,7 @@ public class SubscriptionServiceTests
             true
         );
 
-        // FIX: Use Task.FromResult<User>(null!) to match Task<User> signature and avoid CS8620
+        
         A.CallTo(() => _userRepository.GetByIdAsync(userId, A<CancellationToken>._))
             .Returns(Task.FromResult<User>(null!));
 

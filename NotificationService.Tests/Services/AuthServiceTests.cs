@@ -56,7 +56,7 @@ public class AuthServiceTests
         A.CallTo(() => _userRepository.FirstOrDefaultAsync(
             A<Expression<Func<User, bool>>>._, 
             A<CancellationToken>._))
-            .Returns(Task.FromResult(user)); // For cases where 'user' is not null
+            .Returns(Task.FromResult(user)); 
 
         var request = new LoginRequest("test@example.com", password);
 
@@ -80,7 +80,7 @@ public class AuthServiceTests
         A.CallTo(() => _userRepository.FirstOrDefaultAsync(
             A<Expression<Func<User, bool>>>._, 
             A<CancellationToken>._))
-            .Returns(Task.FromResult<User>(null!)); // Fix: Use non-nullable Task<User> with null-forgiving operator
+            .Returns(Task.FromResult<User>(null!)); 
 
         var request = new LoginRequest("nonexistent@example.com", "Password123");
 
@@ -106,7 +106,7 @@ public class AuthServiceTests
         A.CallTo(() => _userRepository.FirstOrDefaultAsync(
             A<Expression<Func<User, bool>>>._, 
             A<CancellationToken>._))
-            .Returns(Task.FromResult(user)); // For cases where 'user' is not null
+            .Returns(Task.FromResult(user)); 
 
         var request = new LoginRequest("test@example.com", "WrongPassword");
 
@@ -133,7 +133,7 @@ public class AuthServiceTests
         A.CallTo(() => _userRepository.FirstOrDefaultAsync(
             A<Expression<Func<User, bool>>>._, 
             A<CancellationToken>._))
-            .Returns(Task.FromResult(user)); // For cases where 'user' is not null
+            .Returns(Task.FromResult(user)); 
 
         var request = new LoginRequest("test@example.com", password);
 
@@ -176,7 +176,7 @@ public class AuthServiceTests
         // Arrange
         var userId = Guid.NewGuid();
         A.CallTo(() => _userRepository.GetByIdAsync(userId, A<CancellationToken>._))
-            .Returns(Task.FromResult<User>(null!)); // Fix: Use non-nullable Task<User> with null-forgiving operator
+            .Returns(Task.FromResult<User>(null!)); 
 
         // Act
         var result = await _authService.GetCurrentUserAsync(userId);
