@@ -43,14 +43,17 @@ public class DashboardServiceTests
         // Arrange
         A.CallTo(() => _userRepository.CountAsync(A<Expression<Func<User, bool>>>._, A<CancellationToken>._)).Returns(10);
         A.CallTo(() => _subscriptionRepository.CountAsync(A<Expression<Func<Subscription, bool>>>._, A<CancellationToken>._)).Returns(5);
-        
+
         // Mock notification counts
         A.CallTo(() => _notificationRepository.QueryNoTracking())
             .Returns(MockAsyncQueryable.Build(new List<Notification>()));
 
-        A.CallTo(() => _notificationRepository.GetAllQueryable(A<Expression<Func<Notification, bool>>>._))
+        A.CallTo(() => _notificationRepository.GetAllQueryable(
+            A<Expression<Func<Notification, bool>>>._,
+            A<Func<IQueryable<Notification>, IOrderedQueryable<Notification>>>._,
+            A<string>._))
             .Returns(MockAsyncQueryable.Build(new List<Notification>()));
-        
+
         // Act
         var result = await _dashboardService.GetDashboardSummaryAsync();
 
@@ -66,14 +69,18 @@ public class DashboardServiceTests
         // Arrange
         var fromDate = DateTime.UtcNow.AddDays(-2);
         var toDate = DateTime.UtcNow;
-        
+
         var notifications = new List<Notification>
         {
             new() { CreatedAt = DateTime.UtcNow, Status = NotificationStatus.Sent, Type = NotificationType.Email },
             new() { CreatedAt = DateTime.UtcNow.AddDays(-1), Status = NotificationStatus.Failed, Type = NotificationType.Sms }
         };
 
-        A.CallTo(() => _notificationRepository.GetAllQueryable(A<Expression<Func<Notification, bool>>>._))
+        // Explicitly specify all parameters to avoid optional arguments in expression trees
+        A.CallTo(() => _notificationRepository.GetAllQueryable(
+            A<Expression<Func<Notification, bool>>>._,
+            A<Func<IQueryable<Notification>, IOrderedQueryable<Notification>>>._,
+            A<string>._))
             .Returns(MockAsyncQueryable.Build(notifications));
 
         // Act
