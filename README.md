@@ -1,6 +1,6 @@
-# Enterprise Notification Service
+# Notification Service
 
-A production-ready enterprise notification system built with .NET 9, featuring event-driven architecture, guaranteed delivery, and support for Email and SMS notifications.
+A notification system built with .NET 9, featuring event-driven architecture, guaranteed delivery, and support for Email and SMS notifications.
 
 ## Features
 
@@ -30,7 +30,7 @@ A production-ready enterprise notification system built with .NET 9, featuring e
 ### Architecture
 - **Clean Architecture**: Domain-Driven Design with separation of concerns
 - **Code-First Database**: EF Core with SQL Server
-- **Unit Tested**: Comprehensive test coverage with xUnit and FakeItEasy
+- **Unit Test**: Comprehensive test coverage with xUnit and FakeItEasy
 
 ---
 
@@ -65,7 +65,7 @@ dotnet restore NotificationService.sln
 
 ### Step 3: Configure the Database Connection
 
-Update the connection string in `NotificationService.Api/appsettings.json`:
+Update the connection string in `NotificationService.Api/appsettings.Development.json`:
 
 ```json
 {
@@ -92,7 +92,7 @@ For LocalDB:
 2. Set **Default project** to `NotificationService.Infrastructure`
 3. Run:
 ```powershell
-Update-Database -StartupProject NotificationService.Api
+Update-Database 
 ```
 
 **Option B: Using .NET CLI**
