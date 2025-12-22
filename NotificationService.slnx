@@ -3,4 +3,5 @@
   <Project Path="NotificationService.Application/NotificationService.Application.csproj" />
   <Project Path="NotificationService.Domain/NotificationService.Domain.csproj" />
   <Project Path="NotificationService.Infrastructure/NotificationService.Infrastructure.csproj" />
+  <Project Path="NotificationService.Tests/NotificationService.Tests.csproj" />
 </Solution>

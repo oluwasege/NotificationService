@@ -16,18 +16,15 @@ public class AdminUsersController : ControllerBase
     private readonly IUserService _userService;
     private readonly IValidator<CreateUserRequest> _createUserValidator;
     private readonly IValidator<UpdateUserRequest> _updateUserValidator;
-    private readonly ILogger<AdminUsersController> _logger;
 
     public AdminUsersController(
         IUserService userService,
         IValidator<CreateUserRequest> createUserValidator,
-        IValidator<UpdateUserRequest> updateUserValidator,
-        ILogger<AdminUsersController> logger)
+        IValidator<UpdateUserRequest> updateUserValidator)
     {
         _userService = userService;
         _createUserValidator = createUserValidator;
         _updateUserValidator = updateUserValidator;
-        _logger = logger;
     }
 
     /// <summary>

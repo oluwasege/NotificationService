@@ -159,13 +159,13 @@ public class NotificationAppService : INotificationService
             notification.CorrelationId,
             notification.UserId,
             notification.SubscriptionId,
-            notification.Logs.Select(l => new NotificationLogDto(
+            [.. notification.Logs.Select(l => new NotificationLogDto(
                 l.Id,
                 l.Status,
                 l.Message,
                 l.Details,
                 l.CreatedAt
-            )).ToList()
+            ))]
         );
     }
 

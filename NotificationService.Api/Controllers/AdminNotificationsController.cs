@@ -13,14 +13,11 @@ namespace NotificationService.Api.Controllers;
 public class AdminNotificationsController : ControllerBase
 {
     private readonly INotificationService _notificationService;
-    private readonly ILogger<AdminNotificationsController> _logger;
 
     public AdminNotificationsController(
-        INotificationService notificationService,
-        ILogger<AdminNotificationsController> logger)
+        INotificationService notificationService)
     {
         _notificationService = notificationService;
-        _logger = logger;
     }
 
     /// <summary>
