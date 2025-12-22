@@ -2,7 +2,7 @@
 
 A production-ready enterprise notification system built with .NET 9, featuring event-driven architecture, guaranteed delivery, and support for Email and SMS notifications.
 
-## ? Features
+## Features
 
 ### Core Capabilities
 - **Multi-Channel Notifications**: Send Email and SMS notifications through a unified API
@@ -32,14 +32,18 @@ A production-ready enterprise notification system built with .NET 9, featuring e
 - **Code-First Database**: EF Core with SQL Server
 - **Unit Tested**: Comprehensive test coverage with xUnit and FakeItEasy
 
-## ?? Prerequisites
+---
+
+## Prerequisites
 
 - **Visual Studio 2022** (Version 17.8 or later recommended)
 - **.NET 9 SDK**
 - **SQL Server** (LocalDB, SQL Server Express, or full SQL Server)
 - **Git** (optional, for cloning)
 
-## ?? Setup Instructions
+---
+
+## Setup Instructions
 
 ### Step 1: Clone or Download the Solution
 
@@ -117,7 +121,9 @@ dotnet run
 - **Swagger UI**: `https://localhost:<port>/` (root URL)
 - **Health Check**: `https://localhost:<port>/api/health`
 
-## ?? Running Tests
+---
+
+## Running Tests
 
 The solution includes a comprehensive test suite using xUnit and FakeItEasy.
 
@@ -139,7 +145,9 @@ The test suite covers:
 - **Background Services**: `NotificationProcessorServiceTests`
 - **Controllers**: `NotificationsControllerTests`
 
-## ?? Seeded Test Data
+---
+
+## Seeded Test Data
 
 The application automatically seeds the following test data on first run:
 
@@ -173,7 +181,9 @@ The seeded data includes sample templates for:
 
 Pre-configured webhooks for testing webhook delivery functionality.
 
-## ?? Authentication
+---
+
+## Authentication
 
 ### Subscription Key Authentication (For API Clients)
 
@@ -209,55 +219,88 @@ curl -X GET "https://localhost:<port>/api/admin/dashboard" \
   -H "Authorization: Bearer <your-jwt-token>"
 ```
 
-## ?? API Endpoints
+---
 
-### Notification Endpoints (Require Subscription Key)
+## API Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/notifications` | Send a single notification |
-| POST | `/api/notifications/batch` | Send multiple notifications (max 1000) |
-| GET | `/api/notifications` | List notifications with filtering |
-| GET | `/api/notifications/{id}` | Get notification details with logs |
-| POST | `/api/notifications/{id}/cancel` | Cancel a pending notification |
-| POST | `/api/notifications/{id}/retry` | Retry a failed notification |
-| GET | `/api/notifications/quota` | Get remaining quota |
+### Notification Endpoints
 
-### Admin Endpoints (Require JWT)
+These endpoints require the `X-Subscription-Key` header for authentication.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/admin/dashboard` | Get dashboard summary |
-| GET | `/api/admin/dashboard/top-users` | Get top users by volume |
-| GET | `/api/admin/dashboard/stats` | Get notification statistics |
-| GET | `/api/admin/users` | List all users |
-| GET | `/api/admin/users/{id}` | Get user details |
-| POST | `/api/admin/users` | Create new user |
-| PUT | `/api/admin/users/{id}` | Update user |
-| DELETE | `/api/admin/users/{id}` | Delete user (soft) |
-| GET | `/api/admin/subscriptions` | List all subscriptions |
-| POST | `/api/admin/subscriptions` | Create subscription |
-| PUT | `/api/admin/subscriptions/{id}` | Update subscription |
-| POST | `/api/admin/subscriptions/{id}/regenerate-key` | Generate new API key |
-| DELETE | `/api/admin/subscriptions/{id}` | Delete subscription |
-| GET | `/api/admin/notifications` | List all notifications |
-| GET | `/api/admin/notifications/{id}` | Get notification details |
+| `POST` | `/api/notifications` | Send a single notification (Email or SMS) |
+| `POST` | `/api/notifications/batch` | Send multiple notifications in a batch (max 1000) |
+| `GET` | `/api/notifications` | List notifications with filtering and pagination |
+| `GET` | `/api/notifications/{id}` | Get notification details including delivery logs |
+| `POST` | `/api/notifications/{id}/cancel` | Cancel a pending notification |
+| `POST` | `/api/notifications/{id}/retry` | Retry a failed notification |
+| `GET` | `/api/notifications/quota` | Get remaining daily and monthly quota |
 
 ### Authentication Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/auth/login` | Admin login |
-| GET | `/api/auth/me` | Get current user info |
+| `POST` | `/api/auth/login` | Authenticate admin user and receive JWT token |
+| `GET` | `/api/auth/me` | Get current authenticated user information |
 
-### Health Endpoints
+### Admin Dashboard Endpoints
+
+These endpoints require JWT authentication with Admin or SuperAdmin role.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/health` | Basic health check |
-| GET | `/api/health/detailed` | Detailed health with dependencies |
+| `GET` | `/api/admin/dashboard` | Get comprehensive dashboard summary |
+| `GET` | `/api/admin/dashboard/top-users` | Get top users by notification volume |
+| `GET` | `/api/admin/dashboard/stats` | Get daily notification statistics for date range |
 
-## ?? Notification Types
+### Admin User Management Endpoints
+
+These endpoints require JWT authentication with Admin or SuperAdmin role.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/admin/users` | List all users with pagination |
+| `GET` | `/api/admin/users/{id}` | Get user details including subscriptions |
+| `POST` | `/api/admin/users` | Create a new user (SuperAdmin only) |
+| `PUT` | `/api/admin/users/{id}` | Update user details |
+| `DELETE` | `/api/admin/users/{id}` | Soft delete a user (SuperAdmin only) |
+
+### Admin Subscription Management Endpoints
+
+These endpoints require JWT authentication with Admin or SuperAdmin role.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/admin/subscriptions` | List all subscriptions with optional user filter |
+| `GET` | `/api/admin/subscriptions/{id}` | Get subscription details |
+| `POST` | `/api/admin/subscriptions` | Create a new subscription |
+| `PUT` | `/api/admin/subscriptions/{id}` | Update subscription settings |
+| `POST` | `/api/admin/subscriptions/{id}/regenerate-key` | Regenerate subscription API key |
+| `DELETE` | `/api/admin/subscriptions/{id}` | Soft delete a subscription |
+
+### Admin Notification Management Endpoints
+
+These endpoints require JWT authentication with Admin or SuperAdmin role.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/admin/notifications` | List all notifications across all users |
+| `GET` | `/api/admin/notifications/{id}` | Get notification details with delivery logs |
+
+### Health Check Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | Basic health check (ASP.NET Health Checks) |
+| `GET` | `/health/live` | Liveness probe |
+| `GET` | `/health/ready` | Readiness probe (checks database) |
+| `GET` | `/api/health/detailed` | Detailed health with database, providers, and queue status |
+| `GET` | `/api/health/stats` | System statistics and success rates |
+
+---
+
+## Notification Types
 
 ### Email Notification
 
@@ -326,14 +369,18 @@ curl -X GET "https://localhost:<port>/api/admin/dashboard" \
 
 ### Priority Levels
 
-- **Low**: Background notifications, newsletters
-- **Normal**: Standard transactional messages (default)
-- **High**: Important alerts, OTPs
-- **Critical**: Security alerts, critical system notifications
+| Priority | Use Case |
+|----------|----------|
+| `Low` | Background notifications, newsletters |
+| `Normal` | Standard transactional messages (default) |
+| `High` | Important alerts, OTPs |
+| `Critical` | Security alerts, critical system notifications |
 
-## ?? Templates
+---
 
-Templates use [Scriban](https://github.com/scriban/scriban) syntax for dynamic content:
+## Templates
+
+Templates use [Scriban](https://github.com/scriban/scriban) syntax for dynamic content.
 
 ### Creating a Template
 
@@ -350,12 +397,14 @@ Templates use [Scriban](https://github.com/scriban/scriban) syntax for dynamic c
 ### Template Syntax Examples
 
 ```scriban
-{{ variable_name }}           # Simple variable
-{{ if condition }}...{{ end }} # Conditional
-{{ for item in items }}...{{ end }} # Loop
+{{ variable_name }}                    # Simple variable substitution
+{{ if condition }}...{{ end }}         # Conditional rendering
+{{ for item in items }}...{{ end }}    # Loop iteration
 ```
 
-## ?? Webhooks
+---
+
+## Webhooks
 
 Webhooks provide real-time notifications about delivery status changes.
 
@@ -388,7 +437,9 @@ Webhooks provide real-time notifications about delivery status changes.
 
 Webhooks include an HMAC-SHA256 signature in the `X-Webhook-Signature` header for verification.
 
-## ??? Architecture
+---
+
+## Architecture
 
 ```
 NotificationService.sln
@@ -425,13 +476,15 @@ NotificationService.sln
     ??? Services/                        # Service tests
 ```
 
-## ?? Event-Driven Processing
+---
 
-The notification system uses an event-driven architecture with multiple background services:
+## Event-Driven Processing
+
+The notification system uses an event-driven architecture with multiple background services.
 
 ### Notification Flow
 
-1. **Notification Created**: API receives request, validates, stores in DB
+1. **Notification Created**: API receives request, validates, and stores in database
 2. **Outbox Entry**: Creates outbox message for transactional consistency
 3. **Queue Enqueued**: Notification added to priority-based in-memory queue
 4. **Background Processing**: `NotificationProcessorService` picks up notifications
@@ -450,49 +503,59 @@ The notification system uses an event-driven architecture with multiple backgrou
 
 ### Priority Queue
 
-- **High Priority Channel**: Critical and High priority notifications
-- **Normal Priority Channel**: Standard notifications
-- **Low Priority Channel**: Background notifications
+| Channel | Priority Levels |
+|---------|-----------------|
+| High Priority | Critical, High |
+| Normal Priority | Normal |
+| Low Priority | Low |
 
-## ?? Monitoring & Logging
+---
+
+## Monitoring & Logging
 
 ### Log Files
 
 Logs are written to the `logs/` directory:
-- Format: `notification-service-YYYYMMDD.log`
-- Retention: 30 days
+- **Format**: `notification-service-YYYYMMDD.log`
+- **Retention**: 30 days
 
 ### Log Levels
 
-- **Debug**: Detailed diagnostic information
-- **Information**: General operational events
-- **Warning**: Non-critical issues
-- **Error**: Errors that need attention
-- **Fatal**: Critical failures
+| Level | Description |
+|-------|-------------|
+| `Debug` | Detailed diagnostic information |
+| `Information` | General operational events |
+| `Warning` | Non-critical issues |
+| `Error` | Errors that need attention |
+| `Fatal` | Critical failures |
 
 ### Dashboard Metrics
 
 The admin dashboard provides:
-- Total/Active users and subscriptions
+- Total and active users and subscriptions
 - Notification statistics (pending, sent, delivered, failed)
 - Last 7 days trend
 - System health status
 - Queue size monitoring
 
-## ?? Testing with Swagger
+---
+
+## Testing with Swagger
 
 1. Open Swagger UI at the root URL
-2. For notification endpoints:
+2. **For notification endpoints:**
    - Click **Authorize**
    - Enter subscription key in the `X-Subscription-Key` field
    - Click **Authorize**
-3. For admin endpoints:
+3. **For admin endpoints:**
    - First, call `/api/auth/login` to get a token
    - Click **Authorize**
    - Enter `Bearer <your-token>` in the Authorization field
 4. Test any endpoint using the **Try it out** button
 
-## ?? Configuration
+---
+
+## Configuration
 
 ### JWT Settings
 
@@ -517,7 +580,9 @@ The admin dashboard provides:
 }
 ```
 
-## ?? Production Considerations
+---
+
+## Production Considerations
 
 Before deploying to production:
 
@@ -525,17 +590,21 @@ Before deploying to production:
 2. **Update Password Salt**: Use a unique salt value
 3. **Configure Real Providers**: Replace mock providers with actual SMS/Email services (e.g., SendGrid, Twilio)
 4. **Enable HTTPS**: Ensure SSL/TLS is properly configured
-5. **Set Up Monitoring**: Configure application insights or similar
+5. **Set Up Monitoring**: Configure Application Insights or similar monitoring solution
 6. **Database**: Use a proper SQL Server instance (not LocalDB)
 7. **Rate Limiting**: Consider adding request rate limiting
-8. **Message Queue**: For high volume, consider replacing in-memory queue with RabbitMQ/Azure Service Bus
+8. **Message Queue**: For high volume, consider replacing in-memory queue with RabbitMQ or Azure Service Bus
 9. **Distributed Cache**: Replace in-memory cache with Redis for multi-instance deployments
 10. **Webhook Security**: Ensure clients verify webhook signatures
 
-## ?? License
+---
+
+## License
 
 This project is provided as-is for educational and demonstration purposes.
 
-## ?? Support
+---
+
+## Support
 
 For issues or questions, please create an issue in the repository.
