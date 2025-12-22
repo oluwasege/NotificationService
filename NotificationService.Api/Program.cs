@@ -2,6 +2,7 @@ using System.Text;
 using System.Threading.RateLimiting;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -9,8 +10,11 @@ using NotificationService.Api.Middleware;
 using NotificationService.Application;
 using NotificationService.Infrastructure;
 using NotificationService.Infrastructure.Seeding;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Serilog;
 using Serilog.Events;
+using System.Text.Json;
 
 // Configure Serilog early
 Log.Logger = new LoggerConfiguration()
@@ -41,11 +45,49 @@ try
     builder.Services.AddInfrastructure(builder.Configuration);
     builder.Services.AddApplication();
 
+    // Add Memory Cache
+    builder.Services.AddMemoryCache();
+
+    // Add Health Checks
+    builder.Services.AddHealthChecks()
+        .AddSqlServer(
+            connectionString: builder.Configuration.GetConnectionString("DefaultConnection")!,
+            name: "sqlserver",
+            tags: ["database", "sql"])
+        .AddCheck<NotificationQueueHealthCheck>("notification-queue", tags: ["queue"]);
+
+    // Add OpenTelemetry
+    builder.Services.AddOpenTelemetry()
+        .ConfigureResource(resource => resource
+            .AddService(
+                serviceName: "NotificationService",
+                serviceVersion: "1.0.0"))
+        .WithTracing(tracing => tracing
+            .AddAspNetCoreInstrumentation(options =>
+            {
+                options.RecordException = true;
+                options.Filter = httpContext =>
+                {
+                    // Exclude health check endpoints from tracing
+                    var path = httpContext.Request.Path.Value;
+                    return path != "/health" && path != "/health/live" && path != "/health/ready";
+                };
+            })
+            .AddHttpClientInstrumentation(options =>
+            {
+                options.RecordException = true;
+            })
+            .AddEntityFrameworkCoreInstrumentation(options =>
+            {
+                options.SetDbStatementForText = true;
+            })
+            .AddConsoleExporter());
+
     // Add controllers with JSON options
     builder.Services.AddControllers()
         .AddJsonOptions(options =>
         {
-            options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+            options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
             options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
         });
 
@@ -76,11 +118,9 @@ try
 
     // Configure Authorization Policies
     builder.Services.AddAuthorizationBuilder()
-                                               // Configure Authorization Policies
-                                               .AddPolicy("AdminOnly", policy =>
+        .AddPolicy("AdminOnly", policy =>
             policy.RequireRole("Admin", "SuperAdmin"))
-                                               // Configure Authorization Policies
-                                               .AddPolicy("SuperAdminOnly", policy =>
+        .AddPolicy("SuperAdminOnly", policy =>
             policy.RequireRole("SuperAdmin"));
 
     // Configure Swagger/OpenAPI
@@ -160,10 +200,18 @@ try
         });
     });
 
-    // Add Rate Limiting
+    // Add Response Compression
+    builder.Services.AddResponseCompression(options =>
+    {
+        options.EnableForHttps = true;
+    });
+
+    // Add Rate Limiting with per-subscription partitioning
     builder.Services.AddRateLimiter(options =>
     {
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        
+        // Global fixed window limiter
         options.AddFixedWindowLimiter("fixed", limiterOptions =>
         {
             limiterOptions.PermitLimit = 100;
@@ -171,6 +219,59 @@ try
             limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
             limiterOptions.QueueLimit = 2;
         });
+
+        // Per-subscription sliding window limiter
+        options.AddPolicy("per-subscription", context =>
+        {
+            var subscriptionKey = context.Request.Headers["X-Subscription-Key"].FirstOrDefault();
+            
+            if (string.IsNullOrEmpty(subscriptionKey))
+            {
+                // Fall back to IP-based limiting for requests without subscription key
+                var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                return RateLimitPartition.GetSlidingWindowLimiter(
+                    partitionKey: $"ip:{clientIp}",
+                    factory: _ => new SlidingWindowRateLimiterOptions
+                    {
+                        PermitLimit = 50,
+                        Window = TimeSpan.FromMinutes(1),
+                        SegmentsPerWindow = 6,
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 2
+                    });
+            }
+
+            return RateLimitPartition.GetSlidingWindowLimiter(
+                partitionKey: $"sub:{subscriptionKey}",
+                factory: _ => new SlidingWindowRateLimiterOptions
+                {
+                    PermitLimit = 200,
+                    Window = TimeSpan.FromMinutes(1),
+                    SegmentsPerWindow = 6,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 5
+                });
+        });
+
+        options.OnRejected = async (context, cancellationToken) =>
+        {
+            context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+            context.HttpContext.Response.ContentType = "application/json";
+            
+            var response = new
+            {
+                error = new
+                {
+                    code = "RATE_LIMIT_EXCEEDED",
+                    message = "Too many requests. Please retry after some time.",
+                    retryAfter = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter) 
+                        ? retryAfter.TotalSeconds 
+                        : 60
+                }
+            };
+
+            await context.HttpContext.Response.WriteAsJsonAsync(response, cancellationToken);
+        };
     });
 
     var app = builder.Build();
@@ -207,6 +308,60 @@ try
 
     app.UseSubscriptionKeyValidation();
 
+    // Map Health Check endpoints
+    app.MapHealthChecks("/health", new HealthCheckOptions
+    {
+        ResponseWriter = async (context, report) =>
+        {
+            context.Response.ContentType = "application/json";
+            var response = new
+            {
+                status = report.Status.ToString(),
+                timestamp = DateTime.UtcNow,
+                duration = report.TotalDuration.TotalMilliseconds,
+                checks = report.Entries.Select(e => new
+                {
+                    name = e.Key,
+                    status = e.Value.Status.ToString(),
+                    duration = e.Value.Duration.TotalMilliseconds,
+                    description = e.Value.Description,
+                    exception = e.Value.Exception?.Message
+                })
+            };
+            await context.Response.WriteAsJsonAsync(response);
+        }
+    });
+
+    app.MapHealthChecks("/health/live", new HealthCheckOptions
+    {
+        Predicate = _ => false, // No checks, just returns healthy
+        ResponseWriter = async (context, _) =>
+        {
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(new { status = "Healthy", timestamp = DateTime.UtcNow });
+        }
+    });
+
+    app.MapHealthChecks("/health/ready", new HealthCheckOptions
+    {
+        Predicate = check => check.Tags.Contains("database"),
+        ResponseWriter = async (context, report) =>
+        {
+            context.Response.ContentType = "application/json";
+            var response = new
+            {
+                status = report.Status.ToString(),
+                timestamp = DateTime.UtcNow,
+                checks = report.Entries.Select(e => new
+                {
+                    name = e.Key,
+                    status = e.Value.Status.ToString()
+                })
+            };
+            await context.Response.WriteAsJsonAsync(response);
+        }
+    });
+
     app.MapControllers();
 
     Log.Information("NotificationService API started successfully");
@@ -220,3 +375,5 @@ finally
 {
     await Log.CloseAndFlushAsync();
 }
+
+

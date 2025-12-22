@@ -18,6 +18,13 @@ public class Subscription : BaseEntity<Guid>
     public bool AllowSms { get; set; } = true;
     public bool AllowEmail { get; set; } = true;
 
+    /// <summary>
+    /// Concurrency token for optimistic locking
+    /// </summary>
+    public byte[] RowVersion { get; set; }
+
     public virtual User User { get; set; } = null!;
     public virtual ICollection<Notification> Notifications { get; set; } = [];
+    public virtual ICollection<NotificationTemplate> Templates { get; set; } = [];
+    public virtual ICollection<WebhookSubscription> Webhooks { get; set; } = [];
 }

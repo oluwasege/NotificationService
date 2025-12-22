@@ -21,8 +21,11 @@ public class Notification : BaseEntity<Guid>
     public string ErrorMessage { get; set; }
     public string ExternalId { get; set; }
     public string CorrelationId { get; set; }
+    public string IdempotencyKey { get; set; }
+    public Guid? TemplateId { get; set; }
 
     public virtual User User { get; set; } = null!;
     public virtual Subscription Subscription { get; set; } = null!;
+    public virtual NotificationTemplate Template { get; set; }
     public virtual ICollection<NotificationLog> Logs { get; set; } = [];
 }

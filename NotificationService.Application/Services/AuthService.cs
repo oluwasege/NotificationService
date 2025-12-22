@@ -1,6 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -9,6 +8,8 @@ using NotificationService.Application.DTOs;
 using NotificationService.Application.Interfaces;
 using NotificationService.Domain.Entities;
 using NotificationService.Domain.Interfaces;
+using BCrypt.Net;
+using System.Security.Cryptography;
 
 namespace NotificationService.Application.Services;
 
@@ -97,15 +98,29 @@ public class AuthService : IAuthService
 
     public string HashPassword(string password)
     {
-        var bytes = Encoding.UTF8.GetBytes(password + GetSalt());
-        var hash = SHA256.HashData(bytes);
-        return Convert.ToBase64String(hash);
+        return BCrypt.Net.BCrypt.HashPassword(password, BCrypt.Net.BCrypt.GenerateSalt(12));
     }
 
     public bool VerifyPassword(string password, string hash)
     {
-        var computedHash = HashPassword(password);
-        return computedHash == hash;
+        try
+        {
+            return BCrypt.Net.BCrypt.Verify(password, hash);
+        }
+        catch (SaltParseException)
+        {
+            // Handle legacy SHA256 hashes during migration period
+            var legacyHash = HashPasswordLegacy(password);
+            return legacyHash == hash;
+        }
+    }
+
+    private string HashPasswordLegacy(string password)
+    {
+        var salt = _configuration["Security:PasswordSalt"] ?? "NotificationServiceSalt2024";
+        var bytes = Encoding.UTF8.GetBytes(password + salt);
+        var hash = SHA256.HashData(bytes);
+        return Convert.ToBase64String(hash);
     }
 
     private string GenerateJwtToken(User user)
@@ -133,6 +148,4 @@ public class AuthService : IAuthService
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
-
-    private string GetSalt() => _configuration["Security:PasswordSalt"] ?? "NotificationServiceSalt2024";
 }

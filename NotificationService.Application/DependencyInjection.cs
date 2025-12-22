@@ -17,6 +17,8 @@ public static class DependencyInjection
         services.AddScoped<ISubscriptionValidationService, SubscriptionValidationService>();
         services.AddScoped<INotificationService, NotificationAppService>();
         services.AddScoped<IDashboardService, DashboardService>();
+        services.AddScoped<ITemplateService, TemplateService>();
+        services.AddScoped<IWebhookService, WebhookService>();
 
         // Validators
         services.AddValidatorsFromAssemblyContaining<SendNotificationRequestValidator>();

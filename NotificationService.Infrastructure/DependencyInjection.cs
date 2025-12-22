@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using NotificationService.Application.Interfaces;
 using NotificationService.Domain.Interfaces;
 using NotificationService.Infrastructure.BackgroundServices;
+using NotificationService.Infrastructure.Caching;
 using NotificationService.Infrastructure.Data;
 using NotificationService.Infrastructure.Providers;
 using NotificationService.Infrastructure.Queue;
@@ -31,6 +33,9 @@ public static class DependencyInjection
         // Repositories
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
+        // Caching (in-memory)
+        services.AddSingleton<ICacheService, MemoryCacheService>();
+
         // Notification Queue
         services.AddSingleton<INotificationQueue, InMemoryNotificationQueue>();
 
@@ -42,9 +47,17 @@ public static class DependencyInjection
         // Seeder
         services.AddScoped<DatabaseSeeder>();
 
+        // HTTP Client for webhooks
+        services.AddHttpClient("Webhook", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+            client.DefaultRequestHeaders.Add("User-Agent", "NotificationService-Webhook/1.0");
+        });
+
         // Background Services
         services.AddHostedService<NotificationProcessorService>();
         services.AddHostedService<ScheduledNotificationService>();
+        services.AddHostedService<OutboxProcessorService>();
 
         return services;
     }

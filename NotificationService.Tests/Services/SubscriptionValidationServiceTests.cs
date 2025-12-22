@@ -1,4 +1,5 @@
 using FakeItEasy;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NotificationService.Application.DTOs;
 using NotificationService.Application.Services;
@@ -13,6 +14,7 @@ namespace NotificationService.Tests.Services;
 public class SubscriptionValidationServiceTests
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IMemoryCache _cache;
     private readonly ILogger<SubscriptionValidationService> _logger;
     private readonly SubscriptionValidationService _validationService;
     private readonly IRepository<Subscription> _subscriptionRepository;
@@ -20,12 +22,13 @@ public class SubscriptionValidationServiceTests
     public SubscriptionValidationServiceTests()
     {
         _unitOfWork = A.Fake<IUnitOfWork>();
+        _cache = new MemoryCache(new MemoryCacheOptions());
         _logger = A.Fake<ILogger<SubscriptionValidationService>>();
         _subscriptionRepository = A.Fake<IRepository<Subscription>>();
 
         A.CallTo(() => _unitOfWork.GetRepository<Subscription>()).Returns(_subscriptionRepository);
 
-        _validationService = new SubscriptionValidationService(_unitOfWork, _logger);
+        _validationService = new SubscriptionValidationService(_unitOfWork, _cache, _logger);
     }
 
     [Fact]

@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using NotificationService.Application.DTOs;
+using NotificationService.Application.Interfaces;
 using NotificationService.Domain.Entities;
 using NotificationService.Domain.Enums;
 using NotificationService.Domain.Interfaces;
@@ -87,6 +89,7 @@ public class NotificationProcessorService : BackgroundService
         using var scope = _serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();
         var providerFactory = scope.ServiceProvider.GetRequiredService<NotificationProviderFactory>();
+        var webhookService = scope.ServiceProvider.GetRequiredService<IWebhookService>();
 
         try
         {
@@ -130,15 +133,19 @@ public class NotificationProcessorService : BackgroundService
                     "Notification {Id} sent successfully. ExternalId: {ExternalId}",
                     notification.Id, result.ExternalId);
 
+                await context.SaveChangesAsync(cancellationToken);
+
+                // Send webhook for Sent status
+                await SendWebhookAsync(webhookService, dbNotification, cancellationToken);
+
                 // Simulate delivery confirmation (in production, this would be a webhook)
-                _ = SimulateDeliveryConfirmationAsync(dbNotification.Id, cancellationToken);
+                _ = SimulateDeliveryConfirmationAsync(dbNotification.Id, dbNotification.SubscriptionId, cancellationToken);
             }
             else
             {
-                await HandleFailureAsync(context, dbNotification, result.Message, result.ProviderResponse, cancellationToken);
+                await HandleFailureAsync(context, webhookService, dbNotification, result.Message, result.ProviderResponse, cancellationToken);
+                await context.SaveChangesAsync(cancellationToken);
             }
-
-            await context.SaveChangesAsync(cancellationToken);
         }
         catch (Exception ex)
         {
@@ -146,13 +153,14 @@ public class NotificationProcessorService : BackgroundService
 
             using var errorScope = _serviceProvider.CreateScope();
             var errorContext = errorScope.ServiceProvider.GetRequiredService<NotificationDbContext>();
+            var errorWebhookService = errorScope.ServiceProvider.GetRequiredService<IWebhookService>();
 
             var dbNotification = await errorContext.Notifications
                 .FirstOrDefaultAsync(n => n.Id == notification.Id, cancellationToken);
 
             if (dbNotification != null)
             {
-                await HandleFailureAsync(errorContext, dbNotification, ex.Message, null, cancellationToken);
+                await HandleFailureAsync(errorContext, errorWebhookService, dbNotification, ex.Message, null, cancellationToken);
                 await errorContext.SaveChangesAsync(cancellationToken);
             }
         }
@@ -160,6 +168,7 @@ public class NotificationProcessorService : BackgroundService
 
     private async Task HandleFailureAsync(
         NotificationDbContext context,
+        IWebhookService webhookService,
         Notification notification,
         string errorMessage,
         string providerResponse,
@@ -198,10 +207,13 @@ public class NotificationProcessorService : BackgroundService
             _logger.LogError(
                 "Notification {Id} failed permanently after {RetryCount} retries",
                 notification.Id, notification.RetryCount);
+
+            // Send webhook for Failed status
+            await SendWebhookAsync(webhookService, notification, cancellationToken);
         }
     }
 
-    private async Task SimulateDeliveryConfirmationAsync(Guid notificationId, CancellationToken cancellationToken)
+    private async Task SimulateDeliveryConfirmationAsync(Guid notificationId, Guid subscriptionId, CancellationToken cancellationToken)
     {
         try
         {
@@ -210,6 +222,7 @@ public class NotificationProcessorService : BackgroundService
 
             using var scope = _serviceProvider.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();
+            var webhookService = scope.ServiceProvider.GetRequiredService<IWebhookService>();
 
             var notification = await context.Notifications
                 .FirstOrDefaultAsync(n => n.Id == notificationId, cancellationToken);
@@ -225,11 +238,39 @@ public class NotificationProcessorService : BackgroundService
                 await context.SaveChangesAsync(cancellationToken);
 
                 _logger.LogInformation("Notification {Id} delivery confirmed", notificationId);
+
+                // Send webhook for Delivered status
+                await SendWebhookAsync(webhookService, notification, cancellationToken);
             }
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Error confirming delivery for notification {Id}", notificationId);
+        }
+    }
+
+    private static async Task SendWebhookAsync(
+        IWebhookService webhookService,
+        Notification notification,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var payload = new WebhookEventPayload(
+                notification.Id,
+                notification.Status,
+                notification.Type,
+                notification.Recipient,
+                DateTime.UtcNow,
+                notification.ErrorMessage,
+                notification.ExternalId
+            );
+
+            await webhookService.SendWebhookAsync(notification.SubscriptionId, payload, cancellationToken);
+        }
+        catch (Exception)
+        {
+            // Webhook failures should not affect notification processing
         }
     }
 

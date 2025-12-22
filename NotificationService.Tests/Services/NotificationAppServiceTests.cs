@@ -15,28 +15,34 @@ public class NotificationAppServiceTests
 {
     private readonly INotificationQueue _notificationQueue;
     private readonly ISubscriptionValidationService _subscriptionValidation;
+    private readonly ITemplateService _templateService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<NotificationAppService> _logger;
     private readonly NotificationAppService _notificationService;
     private readonly IRepository<Notification> _notificationRepository;
     private readonly IRepository<NotificationLog> _notificationLogRepository;
+    private readonly IRepository<OutboxMessage> _outboxRepository;
 
     public NotificationAppServiceTests()
     {
         _notificationQueue = A.Fake<INotificationQueue>();
         _subscriptionValidation = A.Fake<ISubscriptionValidationService>();
+        _templateService = A.Fake<ITemplateService>();
         _unitOfWork = A.Fake<IUnitOfWork>();
         _logger = A.Fake<ILogger<NotificationAppService>>();
         
         _notificationRepository = A.Fake<IRepository<Notification>>();
         _notificationLogRepository = A.Fake<IRepository<NotificationLog>>();
+        _outboxRepository = A.Fake<IRepository<OutboxMessage>>();
 
         A.CallTo(() => _unitOfWork.GetRepository<Notification>()).Returns(_notificationRepository);
         A.CallTo(() => _unitOfWork.GetRepository<NotificationLog>()).Returns(_notificationLogRepository);
+        A.CallTo(() => _unitOfWork.GetRepository<OutboxMessage>()).Returns(_outboxRepository);
 
         _notificationService = new NotificationAppService(
             _notificationQueue,
             _subscriptionValidation,
+            _templateService,
             _unitOfWork,
             _logger);
     }

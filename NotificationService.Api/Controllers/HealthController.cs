@@ -5,12 +5,13 @@ using NotificationService.Domain.Enums;
 using NotificationService.Domain.Interfaces;
 using NotificationService.Infrastructure.Data;
 using NotificationService.Infrastructure.Providers;
-using NotificationService.Infrastructure.Queue;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace NotificationService.Api.Controllers;
 
 /// <summary>
 /// Health check and diagnostics endpoints.
+/// Note: Basic health checks are also available at /health, /health/live, /health/ready via ASP.NET Health Checks framework.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -38,12 +39,21 @@ public sealed class HealthController : ControllerBase
     }
 
     /// <summary>
-    /// Gets system health status.
+    /// Gets detailed system health status including providers.
     /// </summary>
-    [HttpGet]
+    /// <remarks>
+    /// For basic health checks, use:
+    /// - GET /health - Full health check with all registered checks
+    /// - GET /health/live - Liveness probe (always returns healthy)
+    /// - GET /health/ready - Readiness probe (checks database)
+    /// </remarks>
+    [HttpGet("detailed")]
+    [SwaggerOperation(
+        Summary = "Get Detailed Health Status",
+        Description = "Gets comprehensive health status including database, providers, and queue metrics")]
     [ProducesResponseType(typeof(HealthCheckResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(HealthCheckResponse), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> GetHealth(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetDetailedHealth(CancellationToken cancellationToken)
     {
         // Check database
         DatabaseHealthResponse databaseHealth;
@@ -54,7 +64,7 @@ public sealed class HealthController : ControllerBase
                 ? await _unitOfWork.GetRepository<Notification>().CountAsync(x => x.Status == NotificationStatus.Pending, cancellationToken)
                 : 0;
             var outboxCount = canConnect
-                ? await _unitOfWork.GetRepository<Notification>().CountAsync(x => x.Status == NotificationStatus.Sent, cancellationToken)
+                ? await _unitOfWork.GetRepository<OutboxMessage>().CountAsync(x => x.ProcessedAt == null, cancellationToken)
                 : 0;
 
             databaseHealth = new DatabaseHealthResponse
@@ -114,7 +124,7 @@ public sealed class HealthController : ControllerBase
 
         var response = new HealthCheckResponse
         {
-            Timestamp = DateTime.Now,
+            Timestamp = DateTime.UtcNow,
             Status = isHealthy ? "Healthy" : "Unhealthy",
             Database = databaseHealth,
             Providers = providerHealths,
@@ -125,39 +135,12 @@ public sealed class HealthController : ControllerBase
     }
 
     /// <summary>
-    /// Simple liveness probe.
-    /// </summary>
-    [HttpGet("live")]
-    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-    public IActionResult Live() => Ok(new { status = "alive", timestamp = DateTime.UtcNow });
-
-    /// <summary>
-    /// Readiness probe - checks if service can handle requests.
-    /// </summary>
-    [HttpGet("ready")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> Ready(CancellationToken cancellationToken)
-    {
-        try
-        {
-            var canConnect = await _dbContext.Database.CanConnectAsync(cancellationToken);
-            if (!canConnect)
-                return StatusCode(503, new { status = "not ready", reason = "database unavailable" });
-
-            return Ok(new { status = "ready", timestamp = DateTime.UtcNow });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Readiness check failed");
-            return StatusCode(503, new { status = "not ready", reason = ex.Message });
-        }
-    }
-
-    /// <summary>
     /// Gets system statistics.
     /// </summary>
     [HttpGet("stats")]
+    [SwaggerOperation(
+        Summary = "Get System Statistics",
+        Description = "Gets notification statistics by status and success rates")]
     [ProducesResponseType(typeof(ApiResponse<StatisticsResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetStatistics(CancellationToken cancellationToken)
     {
