@@ -155,7 +155,6 @@ public class SubscriptionValidationService : ISubscriptionValidationService
 
         // Re-fetch to get updated counters
         subscription = await _unitOfWork.GetRepository<Subscription>()
-            .QueryNoTracking()
             .FirstOrDefaultAsync(s => s.Id == subscription.Id, cancellationToken);
 
         var remainingDaily = subscription!.DailyLimit - subscription.DailyUsed;
@@ -231,12 +230,13 @@ public class SubscriptionValidationService : ISubscriptionValidationService
             catch (AppDbConcurrencyException ex)
             {
                 _logger.LogWarning(
+                    ex,
                     "Concurrency conflict incrementing usage for subscription {Id}, attempt {Attempt}/{MaxRetries}: {Message}",
                     subscriptionId, attempt + 1, MaxConcurrencyRetries, ex.Message);
 
                 if (attempt == MaxConcurrencyRetries - 1)
                 {
-                    _logger.LogError("Failed to increment usage after {MaxRetries} attempts", MaxConcurrencyRetries);
+                    _logger.LogError(ex, "Failed to increment usage after {MaxRetries} attempts", MaxConcurrencyRetries);
                     throw;
                 }
 
@@ -258,10 +258,10 @@ public class SubscriptionValidationService : ISubscriptionValidationService
                 await _unitOfWork.GetRepository<Subscription>().UpdateAsync(subscription, cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
             }
-            catch (AppDbConcurrencyException)
+            catch (AppDbConcurrencyException ex)
             {
                 // Another process may have reset - that's fine
-                _logger.LogDebug("Concurrency conflict during counter reset - likely already reset by another process");
+                _logger.LogDebug(ex, "Concurrency conflict during counter reset - likely already reset by another process");
             }
         }
     }
@@ -301,7 +301,7 @@ public class SubscriptionValidationService : ISubscriptionValidationService
         _logger.LogDebug("Invalidated cache for subscription key {Key}", subscriptionKey[..Math.Min(10, subscriptionKey.Length)] + "***");
     }
 
-    private record SubscriptionCacheEntry(
+    public record SubscriptionCacheEntry(
         Guid SubscriptionId,
         Guid UserId,
         SubscriptionStatus Status,

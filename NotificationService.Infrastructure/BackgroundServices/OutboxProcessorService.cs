@@ -145,5 +145,5 @@ public class OutboxProcessorService : BackgroundService
         }
     }
 
-    private record NotificationOutboxPayload(Guid Id, string Type, string Priority);
+    public record NotificationOutboxPayload(Guid Id, string Type, string Priority);
 }

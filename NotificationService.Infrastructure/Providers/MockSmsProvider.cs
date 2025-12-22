@@ -74,9 +74,9 @@ public class MockSmsProvider : INotificationProvider
                 return await SendInternalAsync(notification, token);
             }, cancellationToken);
         }
-        catch (BrokenCircuitException)
+        catch (BrokenCircuitException ex)
         {
-            _logger.LogError("Circuit breaker is open - SMS provider temporarily unavailable");
+            _logger.LogError(ex, "Circuit breaker is open - SMS provider temporarily unavailable");
             return new NotificationResult(
                 Success: false,
                 Message: "SMS provider temporarily unavailable (circuit breaker open)",

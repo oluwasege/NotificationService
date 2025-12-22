@@ -74,9 +74,9 @@ public class MockEmailProvider : INotificationProvider
                 return await SendInternalAsync(notification, token);
             }, cancellationToken);
         }
-        catch (BrokenCircuitException)
+        catch (BrokenCircuitException ex)
         {
-            _logger.LogError("Circuit breaker is open - email provider temporarily unavailable");
+            _logger.LogError(ex, "Circuit breaker is open - email provider temporarily unavailable");
             return new NotificationResult(
                 Success: false,
                 Message: "Email provider temporarily unavailable (circuit breaker open)",

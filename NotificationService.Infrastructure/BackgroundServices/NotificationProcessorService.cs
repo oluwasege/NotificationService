@@ -135,11 +135,9 @@ public class NotificationProcessorService : BackgroundService
 
                 await context.SaveChangesAsync(cancellationToken);
 
-                // Send webhook for Sent status
                 await SendWebhookAsync(webhookService, dbNotification, cancellationToken);
 
-                // Simulate delivery confirmation (in production, this would be a webhook)
-                _ = SimulateDeliveryConfirmationAsync(dbNotification.Id, dbNotification.SubscriptionId, cancellationToken);
+                _ = SimulateDeliveryConfirmationAsync(dbNotification.Id, cancellationToken);
             }
             else
             {
@@ -213,7 +211,7 @@ public class NotificationProcessorService : BackgroundService
         }
     }
 
-    private async Task SimulateDeliveryConfirmationAsync(Guid notificationId, Guid subscriptionId, CancellationToken cancellationToken)
+    private async Task SimulateDeliveryConfirmationAsync(Guid notificationId, CancellationToken cancellationToken)
     {
         try
         {

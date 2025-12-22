@@ -23,7 +23,7 @@ public class MemoryCacheService : ICacheService
         _logger = logger;
     }
 
-    public async Task<T?> GetOrCreateAsync<T>(
+    public async Task<T> GetOrCreateAsync<T>(
         string key,
         Func<Task<T>> factory,
         TimeSpan? absoluteExpiration = null,
@@ -38,7 +38,7 @@ public class MemoryCacheService : ICacheService
         _logger.LogDebug("Cache miss for key: {Key}", key);
         var value = await factory();
 
-        if (value != null)
+        if (!EqualityComparer<T>.Default.Equals(value, default!))
         {
             await SetAsync(key, value, absoluteExpiration, slidingExpiration);
         }
@@ -46,16 +46,16 @@ public class MemoryCacheService : ICacheService
         return value;
     }
 
-    public Task<T?> GetAsync<T>(string key)
+    public Task<T> GetAsync<T>(string key)
     {
         if (_cache.TryGetValue<T>(key, out var value))
         {
             _logger.LogDebug("Cache hit for key: {Key}", key);
-            return Task.FromResult<T?>(value);
+            return Task.FromResult(value);
         }
 
         _logger.LogDebug("Cache miss for key: {Key}", key);
-        return Task.FromResult<T?>(default);
+        return Task.FromResult<T>(default);
     }
 
     public Task SetAsync<T>(

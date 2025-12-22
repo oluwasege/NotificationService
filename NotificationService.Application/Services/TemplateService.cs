@@ -209,7 +209,7 @@ public class TemplateService : ITemplateService
         return true;
     }
 
-    private void ValidateTemplate(string template, string fieldName)
+    private static void ValidateTemplate(string template, string fieldName)
     {
         if (string.IsNullOrWhiteSpace(template))
         {
