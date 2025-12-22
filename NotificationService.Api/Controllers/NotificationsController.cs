@@ -1,5 +1,6 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using NotificationService.Api.Extensions;
 using NotificationService.Api.Middleware;
 using NotificationService.Application.DTOs;
@@ -12,6 +13,7 @@ namespace NotificationService.Api.Controllers;
 [Route("api/[controller]")]
 [Produces("application/json")]
 [RequireSubscriptionKey]
+[EnableRateLimiting("fixed")]
 public class NotificationsController : ControllerBase
 {
     private readonly INotificationService _notificationService;

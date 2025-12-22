@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using NotificationService.Application.DTOs;
 using NotificationService.Application.Interfaces;
 using Swashbuckle.AspNetCore.Annotations;
@@ -10,6 +11,7 @@ namespace NotificationService.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
+[EnableRateLimiting("fixed")]
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;

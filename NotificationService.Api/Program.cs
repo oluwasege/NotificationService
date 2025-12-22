@@ -1,6 +1,8 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using NotificationService.Api.Middleware;
@@ -158,6 +160,19 @@ try
         });
     });
 
+    // Add Rate Limiting
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        options.AddFixedWindowLimiter("fixed", limiterOptions =>
+        {
+            limiterOptions.PermitLimit = 100;
+            limiterOptions.Window = TimeSpan.FromMinutes(1);
+            limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+            limiterOptions.QueueLimit = 2;
+        });
+    });
+
     var app = builder.Build();
 
     // Seed database
@@ -184,6 +199,9 @@ try
     app.UseHttpsRedirection();
     app.UseCors("AllowAll");
 
+    app.UseRateLimiter();
+
+    app.UseResponseCompression();
     app.UseAuthentication();
     app.UseAuthorization();
 
