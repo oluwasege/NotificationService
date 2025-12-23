@@ -9,21 +9,15 @@ namespace NotificationService.Application.Services;
 
 public class UserService : IUserService
 {
-    private readonly IRepository<User> _userRepository;
-    private readonly IRepository<Subscription> _subscriptionRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuthService _authService;
     private readonly ILogger<UserService> _logger;
 
     public UserService(
-        IRepository<User> userRepository,
-        IRepository<Subscription> subscriptionRepository,
         IUnitOfWork unitOfWork,
         IAuthService authService,
         ILogger<UserService> logger)
     {
-        _userRepository = userRepository;
-        _subscriptionRepository = subscriptionRepository;
         _unitOfWork = unitOfWork;
         _authService = authService;
         _logger = logger;
@@ -34,7 +28,7 @@ public class UserService : IUserService
         int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
-        var query = _userRepository.QueryNoTracking();
+        var query = _unitOfWork.GetRepository<User>().QueryNoTracking();
         var totalCount = await query.CountAsync(cancellationToken);
         var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
 
@@ -58,7 +52,7 @@ public class UserService : IUserService
 
     public async Task<UserDetailDto?> GetUserByIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var user = await _userRepository
+        var user = await _unitOfWork.GetRepository<User>()
             .QueryNoTracking()
             .Include(u => u.Subscriptions)
             .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
@@ -94,7 +88,7 @@ public class UserService : IUserService
     {
         _logger.LogInformation("Creating user with email: {Email}", request.Email);
 
-        var existingUser = await _userRepository.FirstOrDefaultAsync(
+        var existingUser = await _unitOfWork.GetRepository<User>().FirstOrDefaultAsync(
             u => u.Email.ToLower() == request.Email.ToLower(),
             cancellationToken);
 
@@ -112,7 +106,7 @@ public class UserService : IUserService
             IsActive = true
         };
 
-        await _userRepository.AddAsync(user, cancellationToken);
+        await _unitOfWork.GetRepository<User>().AddAsync(user, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Created user {Id} with email: {Email}", user.Id, user.Email);
@@ -133,7 +127,7 @@ public class UserService : IUserService
         UpdateUserRequest request,
         CancellationToken cancellationToken = default)
     {
-        var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+        var user = await _unitOfWork.GetRepository<User>().GetByIdAsync(userId, cancellationToken);
         if (user == null) return null;
 
         if (!string.IsNullOrWhiteSpace(request.Name))
@@ -141,7 +135,7 @@ public class UserService : IUserService
 
         if (!string.IsNullOrWhiteSpace(request.Email))
         {
-            var existingUser = await _userRepository.FirstOrDefaultAsync(
+            var existingUser = await _unitOfWork.GetRepository<User>().FirstOrDefaultAsync(
                 u => u.Email.ToLower() == request.Email.ToLower() && u.Id != userId,
                 cancellationToken);
 
@@ -157,7 +151,7 @@ public class UserService : IUserService
         if (request.IsActive.HasValue)
             user.IsActive = request.IsActive.Value;
 
-        await _userRepository.UpdateAsync(user, cancellationToken);
+        await _unitOfWork.GetRepository<User>().UpdateAsync(user, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Updated user {Id}", userId);
@@ -175,10 +169,10 @@ public class UserService : IUserService
 
     public async Task<bool> DeleteUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+        var user = await _unitOfWork.GetRepository<User>().GetByIdAsync(userId, cancellationToken);
         if (user == null) return false;
 
-        await _userRepository.SoftDeleteAsync(user, cancellationToken);
+        await _unitOfWork.GetRepository<User>().SoftDeleteAsync(user, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Soft deleted user {Id}", userId);

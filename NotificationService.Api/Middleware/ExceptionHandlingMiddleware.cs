@@ -6,6 +6,12 @@ namespace NotificationService.Api.Middleware;
 
 public class ExceptionHandlingMiddleware
 {
+    private static readonly JsonSerializerOptions CachedJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+    };
+
     private readonly RequestDelegate _next;
     private readonly ILogger<ExceptionHandlingMiddleware> _logger;
 
@@ -85,13 +91,7 @@ public class ExceptionHandlingMiddleware
             }
         };
 
-        var jsonOptions = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-        };
-
-        await context.Response.WriteAsync(JsonSerializer.Serialize(response, jsonOptions));
+        await context.Response.WriteAsync(JsonSerializer.Serialize(response, CachedJsonOptions));
     }
 }
 

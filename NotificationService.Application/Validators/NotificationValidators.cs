@@ -14,7 +14,7 @@ public class SendNotificationRequestValidator : AbstractValidator<SendNotificati
 
         RuleFor(x => x.Recipient)
             .EmailAddress().WithMessage("Invalid email address")
-            .When(x => x.Type == NotificationType.Email);
+            .When(x => x.Type == NotificationType.Email && x.TemplateId == null);
 
         RuleFor(x => x.Recipient)
             .Matches(@"^\+?[1-9]\d{1,14}$").WithMessage("Invalid phone number format (E.164)")
@@ -23,15 +23,16 @@ public class SendNotificationRequestValidator : AbstractValidator<SendNotificati
         RuleFor(x => x.Subject)
             .NotEmpty().WithMessage("Subject is required for emails")
             .MaximumLength(500).WithMessage("Subject must not exceed 500 characters")
-            .When(x => x.Type == NotificationType.Email);
+            .When(x => x.Type == NotificationType.Email && x.TemplateId == null);
 
         RuleFor(x => x.Body)
             .NotEmpty().WithMessage("Body is required")
-            .MaximumLength(10000).WithMessage("Body must not exceed 10000 characters");
+            .MaximumLength(10000).WithMessage("Body must not exceed 10000 characters")
+            .When(x => x.TemplateId == null);
 
         RuleFor(x => x.Body)
             .MaximumLength(160).WithMessage("SMS body must not exceed 160 characters")
-            .When(x => x.Type == NotificationType.Sms);
+            .When(x => x.Type == NotificationType.Sms && x.TemplateId == null);
 
         RuleFor(x => x.ScheduledAt)
             .GreaterThan(DateTime.UtcNow.AddMinutes(-1))
@@ -45,6 +46,14 @@ public class SendNotificationRequestValidator : AbstractValidator<SendNotificati
         RuleFor(x => x.CorrelationId)
             .MaximumLength(64).WithMessage("CorrelationId must not exceed 64 characters")
             .When(x => !string.IsNullOrEmpty(x.CorrelationId));
+
+        RuleFor(x => x.IdempotencyKey)
+            .MaximumLength(64).WithMessage("IdempotencyKey must not exceed 64 characters")
+            .When(x => !string.IsNullOrEmpty(x.IdempotencyKey));
+
+        RuleFor(x => x.TemplateId)
+            .NotEmpty().WithMessage("TemplateId cannot be an empty GUID")
+            .When(x => x.TemplateId.HasValue && x.TemplateId == Guid.Empty);
     }
 }
 
@@ -58,5 +67,48 @@ public class SendBatchNotificationRequestValidator : AbstractValidator<SendBatch
 
         RuleForEach(x => x.Notifications)
             .SetValidator(new SendNotificationRequestValidator());
+    }
+}
+
+public class CreateTemplateRequestValidator : AbstractValidator<CreateTemplateRequest>
+{
+    public CreateTemplateRequestValidator()
+    {
+        RuleFor(x => x.Name)
+            .NotEmpty().WithMessage("Template name is required")
+            .MaximumLength(200).WithMessage("Template name must not exceed 200 characters");
+
+        RuleFor(x => x.Description)
+            .MaximumLength(1000).WithMessage("Description must not exceed 1000 characters");
+
+        RuleFor(x => x.SubjectTemplate)
+            .NotEmpty().WithMessage("Subject template is required for emails")
+            .MaximumLength(500).WithMessage("Subject template must not exceed 500 characters")
+            .When(x => x.Type == NotificationType.Email);
+
+        RuleFor(x => x.BodyTemplate)
+            .NotEmpty().WithMessage("Body template is required")
+            .MaximumLength(10000).WithMessage("Body template must not exceed 10000 characters");
+    }
+}
+
+public class CreateWebhookRequestValidator : AbstractValidator<CreateWebhookRequest>
+{
+    public CreateWebhookRequestValidator()
+    {
+        RuleFor(x => x.Name)
+            .NotEmpty().WithMessage("Webhook name is required")
+            .MaximumLength(200).WithMessage("Webhook name must not exceed 200 characters");
+
+        RuleFor(x => x.Url)
+            .NotEmpty().WithMessage("Webhook URL is required")
+            .MaximumLength(2000).WithMessage("URL must not exceed 2000 characters")
+            .Must(url => Uri.TryCreate(url, UriKind.Absolute, out var uri) && 
+                        (uri.Scheme == "https" || uri.Scheme == "http"))
+            .WithMessage("Invalid URL format. Must be a valid HTTP or HTTPS URL.");
+
+        RuleFor(x => x.Events)
+            .NotEmpty().WithMessage("At least one event is required")
+            .MaximumLength(500).WithMessage("Events must not exceed 500 characters");
     }
 }

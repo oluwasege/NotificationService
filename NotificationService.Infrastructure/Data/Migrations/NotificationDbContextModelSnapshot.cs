@@ -17,7 +17,7 @@ namespace NotificationService.Infrastructure.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.0")
+                .HasAnnotation("ProductVersion", "9.0.11")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -50,6 +50,10 @@ namespace NotificationService.Infrastructure.Data.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
@@ -81,11 +85,13 @@ namespace NotificationService.Infrastructure.Data.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("Subject")
-                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
                     b.Property<Guid>("SubscriptionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("TemplateId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("Type")
@@ -101,11 +107,17 @@ namespace NotificationService.Infrastructure.Data.Migrations
 
                     b.HasIndex("CorrelationId");
 
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique()
+                        .HasFilter("[IdempotencyKey] IS NOT NULL");
+
                     b.HasIndex("ScheduledAt");
 
                     b.HasIndex("Status");
 
                     b.HasIndex("SubscriptionId");
+
+                    b.HasIndex("TemplateId");
 
                     b.HasIndex("UserId");
 
@@ -153,6 +165,102 @@ namespace NotificationService.Infrastructure.Data.Migrations
                     b.ToTable("NotificationLogs");
                 });
 
+            modelBuilder.Entity("NotificationService.Domain.Entities.NotificationTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BodyTemplate")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("SubjectTemplate")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid?>("SubscriptionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubscriptionId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("IX_NotificationTemplates_Subscription_Name")
+                        .HasFilter("[SubscriptionId] IS NOT NULL");
+
+                    b.ToTable("NotificationTemplates");
+                });
+
+            modelBuilder.Entity("NotificationService.Domain.Entities.OutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AggregateId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("MessageType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ProcessingAttempts")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProcessedAt", "CreatedAt")
+                        .HasDatabaseName("IX_OutboxMessages_Unprocessed");
+
+                    b.ToTable("OutboxMessages");
+                });
+
             modelBuilder.Entity("NotificationService.Domain.Entities.Subscription", b =>
                 {
                     b.Property<Guid>("Id")
@@ -196,6 +304,11 @@ namespace NotificationService.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -268,6 +381,61 @@ namespace NotificationService.Infrastructure.Data.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("NotificationService.Domain.Entities.WebhookSubscription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Events")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("FailureCount")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastFailureAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("LastSuccessAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Secret")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<Guid>("SubscriptionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubscriptionId");
+
+                    b.ToTable("WebhookSubscriptions");
+                });
+
             modelBuilder.Entity("NotificationService.Domain.Entities.Notification", b =>
                 {
                     b.HasOne("NotificationService.Domain.Entities.Subscription", "Subscription")
@@ -276,6 +444,11 @@ namespace NotificationService.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
+                    b.HasOne("NotificationService.Domain.Entities.NotificationTemplate", "Template")
+                        .WithMany("Notifications")
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("NotificationService.Domain.Entities.User", "User")
                         .WithMany("Notifications")
                         .HasForeignKey("UserId")
@@ -283,6 +456,8 @@ namespace NotificationService.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Subscription");
+
+                    b.Navigation("Template");
 
                     b.Navigation("User");
                 });
@@ -298,6 +473,16 @@ namespace NotificationService.Infrastructure.Data.Migrations
                     b.Navigation("Notification");
                 });
 
+            modelBuilder.Entity("NotificationService.Domain.Entities.NotificationTemplate", b =>
+                {
+                    b.HasOne("NotificationService.Domain.Entities.Subscription", "Subscription")
+                        .WithMany("Templates")
+                        .HasForeignKey("SubscriptionId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Subscription");
+                });
+
             modelBuilder.Entity("NotificationService.Domain.Entities.Subscription", b =>
                 {
                     b.HasOne("NotificationService.Domain.Entities.User", "User")
@@ -309,14 +494,34 @@ namespace NotificationService.Infrastructure.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("NotificationService.Domain.Entities.WebhookSubscription", b =>
+                {
+                    b.HasOne("NotificationService.Domain.Entities.Subscription", "Subscription")
+                        .WithMany("Webhooks")
+                        .HasForeignKey("SubscriptionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Subscription");
+                });
+
             modelBuilder.Entity("NotificationService.Domain.Entities.Notification", b =>
                 {
                     b.Navigation("Logs");
                 });
 
+            modelBuilder.Entity("NotificationService.Domain.Entities.NotificationTemplate", b =>
+                {
+                    b.Navigation("Notifications");
+                });
+
             modelBuilder.Entity("NotificationService.Domain.Entities.Subscription", b =>
                 {
                     b.Navigation("Notifications");
+
+                    b.Navigation("Templates");
+
+                    b.Navigation("Webhooks");
                 });
 
             modelBuilder.Entity("NotificationService.Domain.Entities.User", b =>

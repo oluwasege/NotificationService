@@ -2,9 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using NotificationService.Domain.Entities;
 using NotificationService.Domain.Enums;
 using NotificationService.Domain.Interfaces;
-using NotificationService.Infrastructure.Data;
 
 namespace NotificationService.Infrastructure.BackgroundServices;
 
@@ -52,13 +52,15 @@ public class ScheduledNotificationService : BackgroundService
     private async Task ProcessScheduledNotificationsAsync(CancellationToken cancellationToken)
     {
         using var scope = _serviceProvider.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+        var repository = unitOfWork.GetRepository<Notification>();
 
         var now = DateTime.UtcNow;
-        var scheduledNotifications = await context.Notifications
+        var scheduledNotifications = await repository.Query()
             .Where(n => n.Status == NotificationStatus.Pending &&
                         n.ScheduledAt.HasValue &&
                         n.ScheduledAt <= now)
+            .OrderBy(n => n.ScheduledAt)
             .Take(100)
             .ToListAsync(cancellationToken);
 
@@ -77,6 +79,7 @@ public class ScheduledNotificationService : BackgroundService
             _logger.LogDebug("Queued scheduled notification {Id} for processing", notification.Id);
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        await repository.UpdateRangeAsync(scheduledNotifications, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }

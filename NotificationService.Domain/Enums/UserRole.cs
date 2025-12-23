@@ -1,8 +1,13 @@
+using System.ComponentModel;
+
 namespace NotificationService.Domain.Enums;
 
 public enum UserRole
 {
+    [Description("Regular User")]
     User = 1,
-    Admin = 2,
-    SuperAdmin = 3
+    [Description("Administrator")]
+    Admin,
+    [Description("Super Administrator")]
+    SuperAdmin
 }

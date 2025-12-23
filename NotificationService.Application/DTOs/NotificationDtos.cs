@@ -10,14 +10,18 @@ public record SendNotificationRequest(
     NotificationPriority Priority = NotificationPriority.Normal,
     DateTime? ScheduledAt = null,
     string? Metadata = null,
-    string? CorrelationId = null
+    string? CorrelationId = null,
+    string? IdempotencyKey = null,
+    Guid? TemplateId = null,
+    Dictionary<string, object>? TemplateData = null
 );
 
 public record SendNotificationResponse(
     Guid NotificationId,
     NotificationStatus Status,
     string Message,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    bool WasIdempotent = false
 );
 
 public record SendBatchNotificationRequest(
@@ -36,4 +40,69 @@ public record BatchNotificationResult(
     Guid? NotificationId,
     bool Accepted,
     string? ErrorMessage
+);
+
+// Template DTOs
+public record CreateTemplateRequest(
+    string Name,
+    string Description,
+    NotificationType Type,
+    string SubjectTemplate,
+    string BodyTemplate
+);
+
+public record UpdateTemplateRequest(
+    string? Name = null,
+    string? Description = null,
+    string? SubjectTemplate = null,
+    string? BodyTemplate = null,
+    bool? IsActive = null
+);
+
+public record TemplateDto(
+    Guid Id,
+    string Name,
+    string Description,
+    NotificationType Type,
+    string SubjectTemplate,
+    string BodyTemplate,
+    bool IsActive,
+    DateTime CreatedAt
+);
+
+// Webhook DTOs
+public record CreateWebhookRequest(
+    string Name,
+    string Url,
+    string Events,
+    string? Secret = null
+);
+
+public record UpdateWebhookRequest(
+    string? Name = null,
+    string? Url = null,
+    string? Events = null,
+    bool? IsActive = null
+);
+
+public record WebhookDto(
+    Guid Id,
+    string Name,
+    string Url,
+    string Events,
+    bool IsActive,
+    int FailureCount,
+    DateTime? LastSuccessAt,
+    DateTime? LastFailureAt,
+    DateTime CreatedAt
+);
+
+public record WebhookEventPayload(
+    Guid NotificationId,
+    NotificationStatus Status,
+    NotificationType Type,
+    string Recipient,
+    DateTime Timestamp,
+    string? ErrorMessage = null,
+    string? ExternalId = null
 );

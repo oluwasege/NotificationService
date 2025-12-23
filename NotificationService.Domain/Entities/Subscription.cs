@@ -2,7 +2,7 @@ using NotificationService.Domain.Enums;
 
 namespace NotificationService.Domain.Entities;
 
-public class Subscription : BaseEntity
+public class Subscription : BaseEntity<Guid>
 {
     public Guid UserId { get; set; }
     public string SubscriptionKey { get; set; } = string.Empty;
@@ -14,10 +14,17 @@ public class Subscription : BaseEntity
     public int DailyUsed { get; set; }
     public int MonthlyUsed { get; set; }
     public DateTime LastResetDaily { get; set; } = DateTime.UtcNow.Date;
-    public DateTime LastResetMonthly { get; set; } = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+    public DateTime LastResetMonthly { get; set; } = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
     public bool AllowSms { get; set; } = true;
     public bool AllowEmail { get; set; } = true;
 
+    /// <summary>
+    /// Concurrency token for optimistic locking
+    /// </summary>
+    public byte[] RowVersion { get; set; }
+
     public virtual User User { get; set; } = null!;
-    public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+    public virtual ICollection<Notification> Notifications { get; set; } = [];
+    public virtual ICollection<NotificationTemplate> Templates { get; set; } = [];
+    public virtual ICollection<WebhookSubscription> Webhooks { get; set; } = [];
 }
