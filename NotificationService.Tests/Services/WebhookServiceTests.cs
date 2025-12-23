@@ -198,12 +198,12 @@ public class MockHttpMessageHandler : HttpMessageHandler
 {
     public Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>>? SendAsyncFunc { get; set; }
 
-    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         if (SendAsyncFunc != null)
         {
-            return SendAsyncFunc(request, cancellationToken);
+            return await SendAsyncFunc(request, cancellationToken);
         }
-        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+        return new HttpResponseMessage(HttpStatusCode.OK);
     }
 }

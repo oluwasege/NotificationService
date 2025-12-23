@@ -75,7 +75,7 @@ public class WebhookService : IWebhookService
     {
         try
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, webhook.Url)
+            using var request = new HttpRequestMessage(HttpMethod.Post, webhook.Url)
             {
                 Content = new StringContent(payloadJson, Encoding.UTF8, "application/json")
             };
@@ -150,7 +150,7 @@ public class WebhookService : IWebhookService
                 if (webhook.FailureCount >= 10)
                 {
                     webhook.IsActive = false;
-                    _logger.LogWarning("Webhook {Id} disabled after {Count} consecutive failures", 
+                    _logger.LogWarning("Webhook {Id} disabled after {Count} consecutive failures",
                         webhookId, webhook.FailureCount);
                 }
 
